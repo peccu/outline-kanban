@@ -18,10 +18,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   "update:modelValue": [value: string];
   "key-enter": [event: KeyboardEvent];
+  "key-mod-enter": [event: KeyboardEvent];
   "key-tab": [event: KeyboardEvent];
   "key-shift-tab": [event: KeyboardEvent];
+  "key-mod-arrow-left": [event: KeyboardEvent];
+  "key-mod-arrow-right": [event: KeyboardEvent];
   "key-shift-arrow": [event: KeyboardEvent];
   "key-backspace-empty": [event: KeyboardEvent];
+  "user-input": [];
   "tag-inserted": [tag: { id: string | null; label: string }];
   blur: [];
   focus: [];
@@ -35,12 +39,14 @@ const editor = new Editor({
   autofocus: props.autofocus ? "end" : false,
   editorProps: {
     handleKeyDown: (_view, event) => {
+      const mod = event.altKey || event.metaKey;
       // We must intercept BEFORE Tiptap's mention popup so suggestions still work
       // when popup is closed.
       if (event.key === "Enter" && !event.isComposing && !event.shiftKey) {
         // If mention popup is open, let it handle.
         if (document.querySelector('[data-tippy-root]')) return false;
-        emit("key-enter", event);
+        if (mod) emit("key-mod-enter", event);
+        else emit("key-enter", event);
         return true;
       }
       if (event.key === "Tab" && !event.shiftKey) {
@@ -49,6 +55,14 @@ const editor = new Editor({
       }
       if (event.key === "Tab" && event.shiftKey) {
         emit("key-shift-tab", event);
+        return true;
+      }
+      if (mod && event.key === "ArrowLeft") {
+        emit("key-mod-arrow-left", event);
+        return true;
+      }
+      if (mod && event.key === "ArrowRight") {
+        emit("key-mod-arrow-right", event);
         return true;
       }
       if (
@@ -77,6 +91,16 @@ const editor = new Editor({
           btn?.focus();
         });
         return true;
+      }
+      // Any other key: signal the parent that the user is typing so cycle
+      // state (e.g. Tab cycle) can reset. Ignore pure modifier presses and
+      // arrow movement.
+      if (
+        event.key.length === 1 ||
+        event.key === "Backspace" ||
+        event.key === "Delete"
+      ) {
+        emit("user-input");
       }
       return false;
     },
