@@ -27,6 +27,7 @@ const emit = defineEmits<{
   "key-backspace-empty": [event: KeyboardEvent];
   "user-input": [];
   "tag-inserted": [tag: { id: string | null; label: string }];
+  "tag-removed": [tag: { id: string | null; label: string }];
   blur: [];
   focus: [];
 }>();
@@ -126,28 +127,50 @@ const editor = new Editor({
   ],
   onUpdate({ editor }) {
     emit("update:modelValue", serializeToText(editor.getJSON()));
+    diffMentions();
   },
   onBlur: () => emit("blur"),
   onFocus: () => emit("focus"),
 });
 
-// React to Mention insertions: command emits a synthetic event we capture.
-editor.on("transaction", ({ transaction }) => {
-  for (const step of transaction.steps) {
-    const stepJson = step.toJSON() as { slice?: any };
-    if (!stepJson.slice) continue;
-    const content = stepJson.slice?.content;
-    if (!Array.isArray(content)) continue;
-    for (const c of content) {
-      if (c.type === "mention") {
-        emit("tag-inserted", {
-          id: c.attrs?.id ?? null,
-          label: c.attrs?.label ?? c.attrs?.id ?? "",
-        });
-      }
+type MentionEntry = { id: string | null; label: string };
+
+function collectMentions(doc: any): MentionEntry[] {
+  const out: MentionEntry[] = [];
+  const para = doc?.content?.[0];
+  if (!para?.content) return out;
+  for (const n of para.content as any[]) {
+    if (n.type === "mention") {
+      out.push({
+        id: n.attrs?.id ?? null,
+        label: n.attrs?.label ?? n.attrs?.id ?? "",
+      });
     }
   }
-});
+  return out;
+}
+
+const keyOf = (m: MentionEntry) => `${m.id ?? ""}|${m.label}`;
+
+let lastMentions = new Map<string, MentionEntry>();
+{
+  const initial = collectMentions(editor.getJSON());
+  for (const m of initial) lastMentions.set(keyOf(m), m);
+}
+
+function diffMentions() {
+  const current = collectMentions(editor.getJSON());
+  const currentMap = new Map<string, MentionEntry>();
+  for (const m of current) currentMap.set(keyOf(m), m);
+
+  for (const [k, m] of currentMap) {
+    if (!lastMentions.has(k)) emit("tag-inserted", m);
+  }
+  for (const [k, m] of lastMentions) {
+    if (!currentMap.has(k)) emit("tag-removed", m);
+  }
+  lastMentions = currentMap;
+}
 
 watch(
   () => props.modelValue,
@@ -155,6 +178,12 @@ watch(
     const current = serializeToText(editor.getJSON());
     if (val !== current) {
       editor.commands.setContent(serializeFromText(val), { emitUpdate: false });
+      // External title update — refresh the mention snapshot without emitting
+      // spurious tag-added / tag-removed events.
+      lastMentions = new Map();
+      for (const m of collectMentions(editor.getJSON())) {
+        lastMentions.set(keyOf(m), m);
+      }
     }
   },
 );

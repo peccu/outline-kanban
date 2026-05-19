@@ -13,6 +13,7 @@ import {
   useAttachTag,
   useCreateNode,
   useDeleteNode,
+  useDetachTag,
   useIndentNode,
   useMoveNode,
   useNodes,
@@ -70,6 +71,7 @@ const outdent = useOutdentNode();
 const move = useMoveNode();
 const del = useDeleteNode();
 const attach = useAttachTag();
+const detach = useDetachTag();
 
 let saveTimer: number | null = null;
 function scheduleSave() {
@@ -260,12 +262,29 @@ function cycleStatus() {
   updateNode.mutate({ id: props.node.id, patch: { status: next } });
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function onTagInserted(t: { id: string | null; label: string }) {
-  if (t.id && t.id !== t.label) {
+  if (t.id && UUID_RE.test(t.id)) {
     attach.mutate({ nodeId: props.node.id, tag: { tagId: t.id } });
   } else {
     attach.mutate({ nodeId: props.node.id, tag: { name: t.label } });
   }
+}
+
+function onTagRemoved(t: { id: string | null; label: string }) {
+  // Prefer the uuid stored on the mention. If it's just a label (the
+  // "create new" path), fall back to resolving by name against the node's
+  // currently-attached tags.
+  let tagId: string | null = null;
+  if (t.id && UUID_RE.test(t.id)) tagId = t.id;
+  else {
+    const match = (props.node.tags ?? []).find((tag) => tag.name === t.label);
+    if (match) tagId = match.id;
+  }
+  if (!tagId) return;
+  detach.mutate({ nodeId: props.node.id, tagId });
 }
 
 let unregister: (() => void) | null = null;
@@ -311,6 +330,7 @@ onBeforeUnmount(() => {
           @key-backspace-empty="onBackspaceEmpty"
           @user-input="onUserInput"
           @tag-inserted="onTagInserted"
+          @tag-removed="onTagRemoved"
         />
         <ul
           v-if="node.tags && node.tags.length > 0"
