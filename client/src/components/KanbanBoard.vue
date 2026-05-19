@@ -38,6 +38,7 @@ function onMoveLane(
     <section
       v-for="lane in lanes"
       :key="lane.id"
+      :data-lane-id="lane.id"
       class="flex h-full min-h-0 w-72 shrink-0 flex-col rounded-lg border border-neutral-800 bg-neutral-900/40"
     >
       <header

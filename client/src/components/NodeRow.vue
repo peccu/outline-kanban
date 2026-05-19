@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
 import NodeDetailModal from "./NodeDetailModal.vue";
-import { focusNode, registerFocusable } from "./focus-bus";
+import { focusCard, navigateCard } from "./card-nav";
+import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
 import {
   advanceCycle,
   getCycle,
@@ -21,15 +22,7 @@ import {
   useOutdentNode,
   useUpdateNode,
 } from "@/api/queries";
-import type { Node, NodeStatus } from "@/api/client";
-
-const STATUS_ORDER: NodeStatus[] = ["open", "doing", "done", "blocked"];
-const STATUS_COLOR: Record<NodeStatus, string> = {
-  open: "bg-neutral-600",
-  doing: "bg-blue-500",
-  done: "bg-emerald-500",
-  blocked: "bg-rose-500",
-};
+import type { Node } from "@/api/client";
 
 const props = defineProps<{
   node: Node;
@@ -54,6 +47,15 @@ watch(
 );
 
 const editorRef = ref<InstanceType<typeof OutlinerEditor> | null>(null);
+const cardEl = ref<HTMLDivElement | null>(null);
+
+function focusEditor() {
+  editorRef.value?.focus();
+}
+
+function focusSelfCard() {
+  cardEl.value?.focus();
+}
 
 const nextSiblingId = computed(() => {
   const next = props.siblings[props.index + 1];
@@ -90,11 +92,27 @@ function flushSave() {
   }
 }
 
+function leaveEditMode() {
+  // Cancel any in-flight focus-bus retries so they don't pull focus back
+  // into the editor after we land on the card.
+  clearPendingFocus();
+  editorRef.value?.blur();
+  const pm = cardEl.value?.querySelector<HTMLElement>(".ProseMirror");
+  pm?.blur();
+  // rAF lets ProseMirror finish its own focus side-effects first.
+  requestAnimationFrame(() => focusSelfCard());
+}
+
 function onEnter() {
-  // Confirm the title and stay on the card. The debounced save is flushed
-  // immediately so the new value is durable.
   flushSave();
   resetCycle(props.node.id);
+  leaveEditMode();
+}
+
+function onEditorEscape() {
+  flushSave();
+  resetCycle(props.node.id);
+  leaveEditMode();
 }
 
 async function onModEnter() {
@@ -254,15 +272,6 @@ function onUserInput() {
   resetCycle(props.node.id);
 }
 
-function cycleStatus() {
-  const current = props.node.status;
-  const next =
-    STATUS_ORDER[
-      (STATUS_ORDER.indexOf(current) + 1) % STATUS_ORDER.length
-    ]!;
-  updateNode.mutate({ id: props.node.id, patch: { status: next } });
-}
-
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -291,6 +300,98 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 const modalOpen = ref(false);
 const hasDescription = computed(() => !!(props.node.bodyMd ?? "").trim());
 
+// Keyboard handler for the card itself (when the inline editor is NOT
+// focused). Lets the user navigate, enter edit mode, open the modal,
+// or fire the same indent/move shortcuts as in the editor.
+async function onCardKeydown(e: KeyboardEvent) {
+  if (e.defaultPrevented) return;
+  // If the inline editor (or any other input) is focused, ignore — the
+  // editor has its own bindings.
+  const t = e.target as HTMLElement | null;
+  if (t && t.closest(".ProseMirror")) return;
+  if (t && t !== cardEl.value) return; // focus must be on this card itself
+
+  const mod = e.altKey || e.metaKey;
+  const key = e.key;
+
+  // Modal
+  if (key === "o" && !mod && !e.shiftKey && !e.ctrlKey) {
+    e.preventDefault();
+    modalOpen.value = true;
+    return;
+  }
+
+  // Enter / F2 / e → edit mode
+  if ((key === "Enter" && !mod && !e.shiftKey) || key === "F2" || key === "e") {
+    e.preventDefault();
+    focusEditor();
+    return;
+  }
+
+  // M-Enter from card focus also creates a sibling.
+  if (key === "Enter" && mod) {
+    e.preventDefault();
+    await onModEnter();
+    return;
+  }
+
+  // Card-to-card navigation
+  if (!mod && !e.shiftKey) {
+    if (key === "ArrowDown") {
+      e.preventDefault();
+      navigateCard(props.node.id, props.laneId, "down");
+      return;
+    }
+    if (key === "ArrowUp") {
+      e.preventDefault();
+      navigateCard(props.node.id, props.laneId, "up");
+      return;
+    }
+    if (key === "ArrowLeft") {
+      e.preventDefault();
+      navigateCard(props.node.id, props.laneId, "left");
+      return;
+    }
+    if (key === "ArrowRight") {
+      e.preventDefault();
+      navigateCard(props.node.id, props.laneId, "right");
+      return;
+    }
+  }
+
+  // Shift+Arrow: move card across lanes (same as in editor)
+  if (e.shiftKey && (key === "ArrowLeft" || key === "ArrowRight")) {
+    e.preventDefault();
+    onShiftArrow(e);
+    // After the server moves the node, re-grab focus on the card div
+    // (via a short follow-up tick — the row will remount).
+    setTimeout(() => focusCard(props.node.id), 200);
+    return;
+  }
+
+  // M-←/→: outdent / indent (same as editor)
+  if (mod && key === "ArrowLeft") {
+    e.preventDefault();
+    await onModArrowLeft();
+    setTimeout(() => focusCard(props.node.id), 200);
+    return;
+  }
+  if (mod && key === "ArrowRight") {
+    e.preventDefault();
+    await onModArrowRight();
+    setTimeout(() => focusCard(props.node.id), 200);
+    return;
+  }
+
+  // Backspace from card focus deletes empty nodes too.
+  if (key === "Backspace" || key === "Delete") {
+    if (!title.value.trim()) {
+      e.preventDefault();
+      onBackspaceEmpty();
+    }
+  }
+}
+
 let unregister: (() => void) | null = null;
 onMounted(() => {
   unregister = registerFocusable(props.node.id, () => {
@@ -308,17 +409,14 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col gap-1">
     <div
-      class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 transition-colors hover:border-neutral-700 hover:bg-neutral-900/60"
+      ref="cardEl"
+      tabindex="-1"
+      :data-card-node-id="node.id"
+      class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-neutral-500 focus:bg-neutral-900/70 focus:ring-1 focus:ring-neutral-500"
       :style="{ marginLeft: `${depth * 18}px` }"
+      @keydown="onCardKeydown"
     >
       <div class="flex items-start gap-2 px-2 py-1.5">
-        <button
-          type="button"
-          class="mt-1.5 size-2.5 shrink-0 rounded-full transition-transform hover:scale-125"
-          :class="STATUS_COLOR[node.status]"
-          :title="`status: ${node.status} (click to cycle)`"
-          @click="cycleStatus"
-        />
         <div class="min-w-0 flex-1">
           <OutlinerEditor
             ref="editorRef"
@@ -326,6 +424,7 @@ onBeforeUnmount(() => {
             :placeholder="depth === 0 ? 'new item…' : ''"
             @update:model-value="scheduleSave"
             @key-enter="onEnter"
+            @key-escape="onEditorEscape"
             @key-mod-enter="onModEnter"
             @key-tab="onTab"
             @key-shift-tab="onShiftTab"

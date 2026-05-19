@@ -189,7 +189,13 @@ function fmt(ts: string | Date | undefined | null) {
               class="min-h-[8rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 font-mono text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
               placeholder="add details…"
               :disabled="nodeLoading"
+              @keydown.meta.enter.prevent="saveBody"
+              @keydown.ctrl.enter.prevent="saveBody"
+              @keydown.alt.enter.prevent="saveBody"
             />
+            <div class="mt-1 text-right text-[10px] text-neutral-600">
+              M-Enter to save
+            </div>
           </section>
 
           <section>

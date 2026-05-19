@@ -26,6 +26,7 @@ const emit = defineEmits<{
   "key-shift-arrow": [event: KeyboardEvent];
   "key-backspace-empty": [event: KeyboardEvent];
   "user-input": [];
+  "key-escape": [event: KeyboardEvent];
   "tag-inserted": [tag: { id: string | null; label: string }];
   "tag-removed": [tag: { id: string | null; label: string }];
   blur: [];
@@ -82,15 +83,7 @@ const editor = new Editor({
       }
       if (event.key === "Escape") {
         editor.commands.blur();
-        // Move focus to the nearest + add button so the user can keep using
-        // the keyboard (Tab to other buttons, Enter to add).
-        queueMicrotask(() => {
-          const el = document.activeElement?.closest("section");
-          const btn = el?.querySelector<HTMLButtonElement>(
-            'button[data-role="add-node"]',
-          );
-          btn?.focus();
-        });
+        emit("key-escape", event);
         return true;
       }
       // Any other key: signal the parent that the user is typing so cycle

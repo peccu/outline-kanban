@@ -35,6 +35,15 @@ export function focusNode(id: string) {
   }, 500);
 }
 
+/**
+ * Cancel any pending focusNode request. Use this when you intentionally
+ * move focus elsewhere (e.g. into card-focus mode) and want to stop any
+ * scheduled retries from snatching focus back to the editor.
+ */
+export function clearPendingFocus() {
+  pending = null;
+}
+
 export function registerFocusable(id: string, focusFn: () => void) {
   registry.set(id, focusFn);
   if (pending === id) {
