@@ -1,0 +1,17 @@
+.git
+.github
+node_modules
+dist
+client/dist
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+.DS_Store
+.env
+.env.*
+.claude
+.idea
+.vscode
+README.md
+scripts/e2e-smoke.ts

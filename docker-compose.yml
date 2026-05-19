@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: outline-kanban:latest
+    container_name: outline-kanban
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      NODE_ENV: production
+      PORT: "5173"
+      DB_PATH: /data/outline-kanban.sqlite
+    volumes:
+      - outline-kanban-data:/data
+
+volumes:
+  outline-kanban-data:
