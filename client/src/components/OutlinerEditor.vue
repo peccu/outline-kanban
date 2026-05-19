@@ -65,6 +65,19 @@ const editor = new Editor({
           return true;
         }
       }
+      if (event.key === "Escape") {
+        editor.commands.blur();
+        // Move focus to the nearest + add button so the user can keep using
+        // the keyboard (Tab to other buttons, Enter to add).
+        queueMicrotask(() => {
+          const el = document.activeElement?.closest("section");
+          const btn = el?.querySelector<HTMLButtonElement>(
+            'button[data-role="add-node"]',
+          );
+          btn?.focus();
+        });
+        return true;
+      }
       return false;
     },
   },

@@ -22,7 +22,7 @@ await screenshot("00-board");
 
 // Pick the Today lane (2nd) and add an item
 const todayLane = page.locator("section", { has: page.getByText("Today", { exact: true }) }).first();
-await todayLane.getByRole("button", { name: /^\+ add$/ }).click();
+await todayLane.locator('button[data-role="add-node"]').click();
 await page.waitForTimeout(400);
 await page.keyboard.type("ship outline kanban ");
 await page.waitForTimeout(150);

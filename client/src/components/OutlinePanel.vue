@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import NodeRow from "./NodeRow.vue";
 import { useCreateNode, useNodes } from "@/api/queries";
-import { requestFocus } from "./focus-bus";
+import { focusNode } from "./focus-bus";
 
 const props = defineProps<{ laneId: string }>();
 
@@ -25,7 +25,7 @@ async function addNode() {
     parentId: null,
     title: "",
   });
-  requestFocus(created.id);
+  focusNode(created.id);
 }
 </script>
 
@@ -49,10 +49,11 @@ async function addNode() {
     />
     <button
       type="button"
-      class="mt-1 rounded px-2 py-1 text-left text-xs text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300"
+      data-role="add-node"
+      class="mt-1 rounded px-2 py-1 text-left text-xs text-neutral-500 transition-colors hover:bg-neutral-900 hover:text-neutral-300 focus:bg-neutral-900 focus:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-neutral-600"
       @click="addNode"
     >
-      + add
+      + add <span class="text-neutral-700">(Enter)</span>
     </button>
   </div>
 </template>

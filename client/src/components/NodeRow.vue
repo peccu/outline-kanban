@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
-import { pendingFocusNodeId, clearFocus, requestFocus } from "./focus-bus";
+import { focusNode, registerFocusable } from "./focus-bus";
 import {
   useAttachTag,
   useCreateNode,
@@ -80,17 +80,23 @@ async function onEnter() {
     beforeId: nextSiblingId.value,
     title: "",
   });
-  requestFocus(created.id);
+  focusNode(created.id);
 }
 
-function onTab() {
+async function onTab() {
   if (props.index === 0) return; // can't indent first
-  indent.mutate(props.node.id);
+  const id = props.node.id;
+  focusNode(id);
+  await indent.mutateAsync(id);
+  focusNode(id);
 }
 
-function onShiftTab() {
+async function onShiftTab() {
   if (props.node.parentId === null) return;
-  outdent.mutate(props.node.id);
+  const id = props.node.id;
+  focusNode(id);
+  await outdent.mutateAsync(id);
+  focusNode(id);
 }
 
 function onShiftArrow(event: KeyboardEvent) {
@@ -107,7 +113,7 @@ function onBackspaceEmpty() {
   if (props.siblings.length <= 1 && isRoot.value) return; // keep lane non-empty
   const prev = props.siblings[props.index - 1];
   del.mutate(props.node.id);
-  if (prev) requestFocus(prev.id);
+  if (prev) focusNode(prev.id);
 }
 
 function cycleStatus() {
@@ -127,17 +133,16 @@ function onTagInserted(t: { id: string | null; label: string }) {
   }
 }
 
-watch(
-  pendingFocusNodeId,
-  async (id) => {
-    if (id === props.node.id) {
-      await nextTick();
-      editorRef.value?.focus();
-      clearFocus();
-    }
-  },
-  { immediate: true },
-);
+let unregister: (() => void) | null = null;
+onMounted(() => {
+  unregister = registerFocusable(props.node.id, () => {
+    editorRef.value?.focus();
+  });
+});
+onBeforeUnmount(() => {
+  unregister?.();
+  unregister = null;
+});
 </script>
 
 <template>
