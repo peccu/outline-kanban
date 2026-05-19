@@ -1,17 +1,7 @@
 <script setup lang="ts">
-import { useQuery } from "@tanstack/vue-query";
+import { useLanes } from "@/api/queries";
 
-type Health = { status: "ok"; uptime: number };
-
-const { data, isPending, isError, error, refetch, isFetching } = useQuery({
-  queryKey: ["health"],
-  queryFn: async (): Promise<Health> => {
-    const res = await fetch("/api/health");
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  },
-  refetchInterval: 5000,
-});
+const { data: lanes, isPending, isError, error } = useLanes();
 </script>
 
 <template>
@@ -32,33 +22,30 @@ const { data, isPending, isError, error, refetch, isFetching } = useQuery({
       class="rounded-lg border border-neutral-800 bg-neutral-900/40 p-5"
     >
       <h2 class="mb-3 text-sm font-medium uppercase tracking-wide text-neutral-400">
-        backend health
+        lanes
       </h2>
-
-      <div v-if="isPending" class="text-neutral-400">checking…</div>
-
+      <div v-if="isPending" class="text-neutral-400">loading…</div>
       <div v-else-if="isError" class="text-red-400">
-        error: {{ (error as Error).message }}
+        {{ (error as Error).message }}
       </div>
-
-      <dl v-else class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt class="text-neutral-400">status</dt>
-        <dd class="font-mono text-emerald-400">{{ data?.status }}</dd>
-        <dt class="text-neutral-400">uptime</dt>
-        <dd class="font-mono">{{ data?.uptime.toFixed(1) }}s</dd>
-      </dl>
-
-      <button
-        class="mt-4 rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
-        :disabled="isFetching"
-        @click="() => refetch()"
-      >
-        {{ isFetching ? "refetching…" : "refetch" }}
-      </button>
+      <ul v-else class="flex flex-wrap gap-2">
+        <li
+          v-for="lane in lanes"
+          :key="lane.id"
+          class="flex items-center gap-2 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm"
+        >
+          <span
+            class="inline-block size-2.5 rounded-full"
+            :style="{ background: lane.color ?? '#525252' }"
+          />
+          {{ lane.name }}
+          <span class="font-mono text-xs text-neutral-500">{{ lane.sortKey }}</span>
+        </li>
+      </ul>
     </section>
 
     <p class="text-xs text-neutral-500">
-      scaffold only — outliner / kanban UI と DB は次のステップで実装します。
+      typed API client is wired. Outliner / Kanban UI を次に実装します。
     </p>
   </main>
 </template>
