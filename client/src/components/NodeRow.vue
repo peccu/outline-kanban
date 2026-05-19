@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
+import NodeDetailModal from "./NodeDetailModal.vue";
 import { focusNode, registerFocusable } from "./focus-bus";
 import {
   advanceCycle,
@@ -287,6 +288,9 @@ function onTagRemoved(t: { id: string | null; label: string }) {
   detach.mutate({ nodeId: props.node.id, tagId });
 }
 
+const modalOpen = ref(false);
+const hasDescription = computed(() => !!(props.node.bodyMd ?? "").trim());
+
 let unregister: (() => void) | null = null;
 onMounted(() => {
   unregister = registerFocusable(props.node.id, () => {
@@ -302,48 +306,66 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="flex flex-col">
+  <div class="flex flex-col gap-1">
     <div
-      class="group flex items-start gap-2 rounded px-1 py-0.5 hover:bg-neutral-900/60"
-      :style="{ paddingLeft: `${depth * 16}px` }"
+      class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 transition-colors hover:border-neutral-700 hover:bg-neutral-900/60"
+      :style="{ marginLeft: `${depth * 18}px` }"
     >
-      <button
-        type="button"
-        class="mt-2 size-2 shrink-0 rounded-full transition-transform hover:scale-125"
-        :class="STATUS_COLOR[node.status]"
-        :title="`status: ${node.status} (click to cycle)`"
-        @click="cycleStatus"
-      />
-      <div class="min-w-0 flex-1">
-        <OutlinerEditor
-          ref="editorRef"
-          v-model="title"
-          :placeholder="depth === 0 ? 'new item…' : ''"
-          @update:model-value="scheduleSave"
-          @key-enter="onEnter"
-          @key-mod-enter="onModEnter"
-          @key-tab="onTab"
-          @key-shift-tab="onShiftTab"
-          @key-mod-arrow-left="onModArrowLeft"
-          @key-mod-arrow-right="onModArrowRight"
-          @key-shift-arrow="onShiftArrow"
-          @key-backspace-empty="onBackspaceEmpty"
-          @user-input="onUserInput"
-          @tag-inserted="onTagInserted"
-          @tag-removed="onTagRemoved"
+      <div class="flex items-start gap-2 px-2 py-1.5">
+        <button
+          type="button"
+          class="mt-1.5 size-2.5 shrink-0 rounded-full transition-transform hover:scale-125"
+          :class="STATUS_COLOR[node.status]"
+          :title="`status: ${node.status} (click to cycle)`"
+          @click="cycleStatus"
         />
-        <ul
-          v-if="node.tags && node.tags.length > 0"
-          class="mt-0.5 flex flex-wrap gap-1"
-        >
-          <li
-            v-for="t in node.tags"
-            :key="t.id"
-            class="rounded bg-emerald-500/10 px-1.5 py-0 text-[10px] font-mono text-emerald-300"
+        <div class="min-w-0 flex-1">
+          <OutlinerEditor
+            ref="editorRef"
+            v-model="title"
+            :placeholder="depth === 0 ? 'new item…' : ''"
+            @update:model-value="scheduleSave"
+            @key-enter="onEnter"
+            @key-mod-enter="onModEnter"
+            @key-tab="onTab"
+            @key-shift-tab="onShiftTab"
+            @key-mod-arrow-left="onModArrowLeft"
+            @key-mod-arrow-right="onModArrowRight"
+            @key-shift-arrow="onShiftArrow"
+            @key-backspace-empty="onBackspaceEmpty"
+            @user-input="onUserInput"
+            @tag-inserted="onTagInserted"
+            @tag-removed="onTagRemoved"
+          />
+          <div
+            v-if="(node.tags && node.tags.length > 0) || hasDescription"
+            class="mt-1 flex flex-wrap items-center gap-1"
           >
-            #{{ t.name }}
-          </li>
-        </ul>
+            <span
+              v-if="hasDescription"
+              class="rounded bg-neutral-800 px-1.5 py-0 text-[10px] text-neutral-300"
+              title="has description"
+            >
+              ¶
+            </span>
+            <span
+              v-for="t in node.tags ?? []"
+              :key="t.id"
+              class="rounded bg-emerald-500/10 px-1.5 py-0 text-[10px] font-mono text-emerald-300"
+            >
+              #{{ t.name }}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          data-role="open-detail"
+          class="mt-0.5 shrink-0 rounded p-1 text-xs text-neutral-500 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-neutral-600 group-hover:opacity-100"
+          title="open details"
+          @click="modalOpen = true"
+        >
+          ⌄
+        </button>
       </div>
     </div>
     <NodeRow
@@ -355,6 +377,11 @@ onBeforeUnmount(() => {
       :lane-id="laneId"
       :depth="depth + 1"
       @move-lane="(d, id) => emit('move-lane', d, id)"
+    />
+    <NodeDetailModal
+      v-if="modalOpen"
+      :node-id="node.id"
+      @close="modalOpen = false"
     />
   </div>
 </template>
