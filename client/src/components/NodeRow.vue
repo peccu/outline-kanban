@@ -11,7 +11,15 @@ import {
   useOutdentNode,
   useUpdateNode,
 } from "@/api/queries";
-import type { Node } from "@/api/client";
+import type { Node, NodeStatus } from "@/api/client";
+
+const STATUS_ORDER: NodeStatus[] = ["open", "doing", "done", "blocked"];
+const STATUS_COLOR: Record<NodeStatus, string> = {
+  open: "bg-neutral-600",
+  doing: "bg-blue-500",
+  done: "bg-emerald-500",
+  blocked: "bg-rose-500",
+};
 
 const props = defineProps<{
   node: Node;
@@ -102,6 +110,15 @@ function onBackspaceEmpty() {
   if (prev) requestFocus(prev.id);
 }
 
+function cycleStatus() {
+  const current = props.node.status;
+  const next =
+    STATUS_ORDER[
+      (STATUS_ORDER.indexOf(current) + 1) % STATUS_ORDER.length
+    ]!;
+  updateNode.mutate({ id: props.node.id, patch: { status: next } });
+}
+
 function onTagInserted(t: { id: string | null; label: string }) {
   if (t.id && t.id !== t.label) {
     attach.mutate({ nodeId: props.node.id, tag: { tagId: t.id } });
@@ -129,9 +146,12 @@ watch(
       class="group flex items-start gap-2 rounded px-1 py-0.5 hover:bg-neutral-900/60"
       :style="{ paddingLeft: `${depth * 16}px` }"
     >
-      <span
-        class="mt-2 size-1.5 shrink-0 rounded-full bg-neutral-600 group-hover:bg-neutral-400"
-        :title="node.status"
+      <button
+        type="button"
+        class="mt-2 size-2 shrink-0 rounded-full transition-transform hover:scale-125"
+        :class="STATUS_COLOR[node.status]"
+        :title="`status: ${node.status} (click to cycle)`"
+        @click="cycleStatus"
       />
       <div class="min-w-0 flex-1">
         <OutlinerEditor

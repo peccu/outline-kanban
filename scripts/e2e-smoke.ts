@@ -6,56 +6,57 @@ const errors: string[] = [];
 const logs: string[] = [];
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage();
+const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
 
 await page.goto(APP_URL);
 await page.waitForLoadState("networkidle");
-
-const todayVisible = await page
-  .locator("h2", { hasText: /today/i })
-  .first()
-  .isVisible()
-  .catch(() => false);
-console.log(`lane 'Today' header visible: ${todayVisible}`);
+await page.waitForTimeout(300);
 
 const screenshot = (name: string) =>
   page.screenshot({ path: `/tmp/outline-${name}.png`, fullPage: true });
 
-await screenshot("00-initial");
+await screenshot("00-board");
 
-const addBtn = page.getByRole("button", { name: /^\+ add$/ }).first();
-if (await addBtn.count()) {
-  await addBtn.click();
-  await page.waitForTimeout(400);
-  await page.keyboard.type("first item ");
-  await page.waitForTimeout(150);
-  await page.keyboard.type("#urg");
-  await page.waitForTimeout(700);
-  await screenshot("01-mention-open");
+// Pick the Today lane (2nd) and add an item
+const todayLane = page.locator("section", { has: page.getByText("Today", { exact: true }) }).first();
+await todayLane.getByRole("button", { name: /^\+ add$/ }).click();
+await page.waitForTimeout(400);
+await page.keyboard.type("ship outline kanban ");
+await page.waitForTimeout(150);
+await page.keyboard.type("#mvp");
+await page.waitForTimeout(700);
+await page.keyboard.press("Enter"); // create #mvp via mention popup
+await page.waitForTimeout(400);
+await screenshot("01-typed");
 
-  // Accept the "create #urg" suggestion (Enter while popup is open)
-  await page.keyboard.press("Enter");
-  await page.waitForTimeout(400);
-  await screenshot("02-mention-inserted");
+// Enter to create sibling
+await page.keyboard.press("Enter");
+await page.waitForTimeout(300);
+await page.keyboard.type("write integration tests");
+await page.waitForTimeout(300);
+await screenshot("02-sibling");
 
-  // Enter again (popup closed) → should create a sibling
-  await page.keyboard.press("Enter");
-  await page.waitForTimeout(400);
-  await page.keyboard.type("second item");
-  await page.waitForTimeout(400);
-  await screenshot("03-sibling-created");
+// Shift+ArrowRight should move the focused root node into "Doing" lane
+await page.keyboard.press("Shift+ArrowRight");
+await page.waitForTimeout(600);
+await screenshot("03-moved-to-doing");
 
-  // Tab: indent
-  await page.keyboard.press("Tab");
-  await page.waitForTimeout(400);
-  await screenshot("04-indented");
-}
+// Click the status bullet on the first node (now in "ship outline kanban")
+const shipNode = page.locator("text=ship outline kanban").first();
+const shipBullet = shipNode
+  .locator("xpath=ancestor::div[contains(@class,'group')]")
+  .first()
+  .locator("button")
+  .first();
+await shipBullet.click();
+await page.waitForTimeout(400);
+await screenshot("04-status-cycled");
 
-console.log(`\n=== console (last 30 of ${logs.length}) ===`);
-for (const l of logs.slice(-30)) console.log(l);
+console.log(`\n=== console (last 20 of ${logs.length}) ===`);
+for (const l of logs.slice(-20)) console.log(l);
 console.log(`\n=== page errors (${errors.length}) ===`);
 for (const e of errors) console.log(e);
 
