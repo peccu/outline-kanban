@@ -1,13 +1,13 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { apiRouter } from "./api/router";
 import { db } from "./db/client";
 import { seedDefaultLanesIfEmpty } from "./db/seed";
+import { log, requestLogger } from "./lib/log";
 
 const isProd = process.env.NODE_ENV === "production";
 const migrationsDir = isProd
@@ -19,7 +19,7 @@ await seedDefaultLanesIfEmpty();
 
 const app = new OpenAPIHono();
 
-app.use("*", logger());
+app.use("*", requestLogger());
 app.use("/api/*", cors({ origin: "*" }));
 
 app.route("/api", apiRouter);
@@ -64,5 +64,5 @@ export default {
   fetch: app.fetch,
 };
 
-console.log(`[server] listening on http://localhost:${port}`);
-console.log(`[server] swagger UI:  http://localhost:${port}/docs`);
+log.info(`[server] listening on http://localhost:${port}`);
+log.info(`[server] swagger UI:  http://localhost:${port}/docs`);

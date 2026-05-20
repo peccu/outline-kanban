@@ -12,8 +12,16 @@ services:
       NODE_ENV: production
       PORT: "8787"
       DB_PATH: /data/outline-kanban.sqlite
+      # debug | info | warn | error | silent. Default info.
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - outline-kanban-data:/data
+    # Cap container log storage: 10MB per file × 3 rotated files = 30MB max.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   outline-kanban-data:

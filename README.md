@@ -49,6 +49,29 @@ The DB file is stored in a named volume (`outline-kanban-data`), mounted at
 `/data/outline-kanban.sqlite` inside the container. Override `DB_PATH` /
 `PORT` via env if you want to move it elsewhere.
 
+### Logging
+
+The server honors `LOG_LEVEL` (`debug` / `info` / `warn` / `error` / `silent`,
+default `info`). Request logging happens at:
+
+- `error` for any 5xx response,
+- `warn` for 4xx,
+- `info` for everything else (one line per request).
+
+So `LOG_LEVEL=warn` keeps only the noisy / interesting requests, and
+`LOG_LEVEL=silent` turns request logging off entirely. Startup banners use
+`info`.
+
+```bash
+LOG_LEVEL=warn docker compose up -d         # ad-hoc
+LOG_LEVEL=warn bun run dev                  # local
+```
+
+The Docker container also caps stored log volume to **30 MB per service**
+(`10m × 3` rotated json files) so a long-running deploy can't fill the
+host disk. Tune `logging.options` in `docker-compose.yml` if you need
+more / less retention.
+
 > The project deliberately uses `8787` (server) and `8788` (Vite dev) instead
 > of Vite's `5173`/`5174` defaults, so it doesn't fight any other JS dev
 > server you might be running in parallel.
