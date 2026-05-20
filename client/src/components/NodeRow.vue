@@ -4,6 +4,7 @@ import OutlinerEditor from "./OutlinerEditor.vue";
 import NodeDetailModal from "./NodeDetailModal.vue";
 import { focusCard, navigateCard } from "./card-nav";
 import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
+import { clearDropTarget, isDropBefore } from "./drop-state";
 import {
   advanceCycle,
   getCycle,
@@ -328,6 +329,8 @@ function onDragStart(e: DragEvent) {
 
 function onDragEnd() {
   dragging.value = false;
+  // Clear any drop indicator left over from a cancelled drag.
+  clearDropTarget();
 }
 
 function onEditorBlur() {
@@ -491,10 +494,16 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col gap-1">
     <div
+      v-if="depth === 0 && isDropBefore(node.id)"
+      data-role="drop-indicator"
+      class="h-0.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+    />
+    <div
       ref="cardEl"
       tabindex="-1"
       draggable="true"
       :data-card-node-id="node.id"
+      :data-root-card="depth === 0 ? '' : null"
       class="group cursor-pointer rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-emerald-500/70 focus:bg-neutral-900/70 focus:ring-1 focus:ring-emerald-500/60"
       :class="[
         dragging ? 'opacity-40' : '',

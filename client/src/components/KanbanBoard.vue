@@ -12,6 +12,7 @@ import {
   isLaneHidden,
   showLane,
 } from "./hidden-lanes";
+import { clearDropTarget, getDropTarget, setDropTarget } from "./drop-state";
 
 const { data, isPending, isError, error } = useLanes();
 const allLanes = computed(() => data.value ?? []);
@@ -46,27 +47,65 @@ function onMoveLaneShortcut(
   });
 }
 
+function resolveDropTarget(e: DragEvent, laneId: string): string | null {
+  // Find the first root-level card whose vertical midpoint is below the
+  // pointer. That card becomes `beforeId`; if none does, drop at end.
+  const section = (e.currentTarget as HTMLElement).closest<HTMLElement>(
+    "section[data-lane-id]",
+  );
+  if (!section) return null;
+  const cards = Array.from(
+    section.querySelectorAll<HTMLElement>("[data-root-card]"),
+  );
+  const y = e.clientY;
+  for (const card of cards) {
+    const r = card.getBoundingClientRect();
+    if (y < r.top + r.height / 2) {
+      return card.dataset.cardNodeId ?? null;
+    }
+  }
+  return null;
+}
+
 function onDragOver(e: DragEvent, laneId: string) {
   if (!e.dataTransfer?.types.includes("application/x-node-id")) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
   dragOverLaneId.value = laneId;
+  const beforeId = resolveDropTarget(e, laneId);
+  const cur = getDropTarget();
+  if (!cur || cur.laneId !== laneId || cur.beforeId !== beforeId) {
+    setDropTarget({ laneId, beforeId });
+  }
 }
 
 function onDragLeave(e: DragEvent, laneId: string) {
   const next = e.relatedTarget as HTMLElement | null;
   if (next && (e.currentTarget as HTMLElement)?.contains(next)) return;
   if (dragOverLaneId.value === laneId) dragOverLaneId.value = null;
+  // Only clear the precise target if we're truly leaving — entering a
+  // sibling lane will re-set it on its own dragover.
+  const cur = getDropTarget();
+  if (cur && cur.laneId === laneId && (!next || !next.closest("section[data-lane-id]"))) {
+    clearDropTarget();
+  }
 }
 
 function onDrop(e: DragEvent, laneId: string) {
   const nodeId = e.dataTransfer?.getData("application/x-node-id");
   dragOverLaneId.value = null;
+  const target = getDropTarget();
+  clearDropTarget();
   if (!nodeId) return;
   e.preventDefault();
+  const beforeId =
+    target && target.laneId === laneId ? target.beforeId : null;
+  // Dropping right before yourself (or right after the previous sibling
+  // == before yourself) is a no-op; skip the mutation.
+  if (beforeId === nodeId) return;
   moveMutation.mutate({
     id: nodeId,
-    move: { parentId: null, laneId, beforeId: null },
+    move: { parentId: null, laneId, beforeId },
   });
 }
 

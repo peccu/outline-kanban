@@ -4,6 +4,7 @@ import NodeRow from "./NodeRow.vue";
 import { useCreateNode, useNodes } from "@/api/queries";
 import { focusNode } from "./focus-bus";
 import { navigateFrom } from "./card-nav";
+import { isDropAtEndOf } from "./drop-state";
 
 const props = defineProps<{ laneId: string }>();
 
@@ -58,6 +59,11 @@ function onAddKeydown(e: KeyboardEvent) {
       :lane-id="laneId"
       :depth="0"
       @move-lane="(d, id) => emit('move-lane', d, id)"
+    />
+    <div
+      v-if="isDropAtEndOf(laneId)"
+      data-role="drop-indicator"
+      class="h-0.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
     />
     <button
       ref="addBtn"
