@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
+import { renderMarkdown } from "@/lib/markdown";
 import {
   useAddComment,
   useAttachTag,
@@ -40,10 +41,19 @@ const attach = useAttachTag();
 const detach = useDetachTag();
 
 const body = ref("");
+// Description is "edit-mode" by default when the node has no body yet,
+// so the user lands on a textarea instead of a blank rendered view.
+const bodyEditing = ref(false);
+let bodyEditingPrimed = false;
 watch(
   () => node.value?.bodyMd,
   (v) => {
-    if (v !== undefined && body.value !== v) body.value = v ?? "";
+    if (v === undefined) return;
+    if (body.value !== v) body.value = v ?? "";
+    if (!bodyEditingPrimed) {
+      bodyEditing.value = !(v ?? "").trim();
+      bodyEditingPrimed = true;
+    }
   },
   { immediate: true },
 );
@@ -120,12 +130,59 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 const newComment = ref("");
 const dirtyBody = computed(() => (node.value?.bodyMd ?? "") !== body.value);
 
+// Description is shown as rendered Markdown when there is content and
+// we aren't actively editing. dblclick or focus + Enter switches to
+// edit mode (textarea). When the body is initially empty the textarea
+// is shown directly so the user can start typing immediately
+// (bodyEditing is primed above based on the node's saved body).
+const bodyTextarea = ref<HTMLTextAreaElement | null>(null);
+const bodyView = ref<HTMLElement | null>(null);
+const bodyHasContent = computed(() => !!body.value.trim());
+const showBodyTextarea = computed(() => bodyEditing.value);
+const bodyHtml = computed(() => renderMarkdown(body.value));
+
 async function saveBody() {
   if (!node.value) return;
   await update.mutateAsync({
     id: node.value.id,
     patch: { bodyMd: body.value },
   });
+}
+
+async function enterBodyEdit() {
+  bodyEditing.value = true;
+  await nextTick();
+  bodyTextarea.value?.focus();
+  // Cursor at end so the user can append.
+  const ta = bodyTextarea.value;
+  if (ta) ta.selectionStart = ta.selectionEnd = ta.value.length;
+}
+
+function leaveBodyEdit() {
+  // Only switch to the rendered view if the body actually has content —
+  // an empty body keeps the textarea so the user can keep typing.
+  if (!bodyHasContent.value) return;
+  bodyEditing.value = false;
+  requestAnimationFrame(() => bodyView.value?.focus());
+}
+
+async function saveBodyAndLeave() {
+  await saveBody();
+  leaveBodyEdit();
+}
+
+function onBodyViewKeydown(e: KeyboardEvent) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    enterBodyEdit();
+  }
+}
+
+function onBodyTextareaKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    void saveBodyAndLeave();
+  }
 }
 
 async function postComment() {
@@ -141,7 +198,6 @@ function setStatus(s: NodeStatus) {
 }
 
 const modalRoot = ref<HTMLElement | null>(null);
-const bodyTextarea = ref<HTMLTextAreaElement | null>(null);
 let previousFocus: HTMLElement | null = null;
 
 function onKeyDown(e: KeyboardEvent) {
@@ -153,10 +209,12 @@ onMounted(() => {
   document.addEventListener("keydown", onKeyDown);
   document.body.style.overflow = "hidden";
   requestAnimationFrame(() => {
-    // Focus the description textarea so the user can start typing
-    // notes immediately. Fall back to the modal root if it isn't
-    // mounted yet (shouldn't happen, but stays accessible).
-    (bodyTextarea.value ?? modalRoot.value)?.focus();
+    // Land focus on the description area: the textarea if we're going
+    // to render one (empty body), otherwise the rendered-markdown view
+    // so Enter immediately switches into edit mode.
+    const target =
+      bodyTextarea.value ?? bodyView.value ?? modalRoot.value;
+    target?.focus();
   });
 });
 onBeforeUnmount(() => {
@@ -277,27 +335,45 @@ function fmt(ts: string | Date | undefined | null) {
                 description (markdown)
               </h3>
               <button
-                v-if="dirtyBody"
+                v-if="showBodyTextarea && dirtyBody"
                 type="button"
                 class="rounded border border-neutral-700 px-2 py-0.5 text-xs text-neutral-200 hover:bg-neutral-800"
                 :disabled="update.isPending.value"
-                @click="saveBody"
+                @click="saveBodyAndLeave"
               >
                 {{ update.isPending.value ? "saving…" : "save" }}
               </button>
             </div>
             <textarea
+              v-if="showBodyTextarea"
               ref="bodyTextarea"
               v-model="body"
-              class="min-h-[8rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 font-mono text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
+              class="min-h-[8rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 font-mono text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-emerald-500/70 focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
               placeholder="add details…"
               :disabled="nodeLoading"
-              @keydown.meta.enter.prevent="saveBody"
-              @keydown.ctrl.enter.prevent="saveBody"
-              @keydown.alt.enter.prevent="saveBody"
+              @keydown="onBodyTextareaKeydown"
+              @keydown.meta.enter.prevent="saveBodyAndLeave"
+              @keydown.ctrl.enter.prevent="saveBodyAndLeave"
+              @keydown.alt.enter.prevent="saveBodyAndLeave"
+            />
+            <div
+              v-else
+              ref="bodyView"
+              tabindex="0"
+              role="textbox"
+              aria-label="description (double-click or press Enter to edit)"
+              class="prose prose-invert max-w-none cursor-text rounded border border-transparent bg-neutral-900/30 p-2 text-sm text-neutral-100 outline-none transition-colors hover:border-neutral-800 hover:bg-neutral-900/50 focus:border-emerald-500/70 focus:bg-neutral-900/60 focus:ring-1 focus:ring-emerald-500/60"
+              @dblclick="enterBodyEdit"
+              @keydown="onBodyViewKeydown"
+              v-html="bodyHtml"
             />
             <div class="mt-1 text-right text-[10px] text-neutral-600">
-              M-Enter to save
+              <template v-if="showBodyTextarea">
+                M-Enter to save · Esc to save & exit
+              </template>
+              <template v-else>
+                double-click or Enter to edit
+              </template>
             </div>
           </section>
 
@@ -320,9 +396,10 @@ function fmt(ts: string | Date | undefined | null) {
                 <div class="text-[10px] uppercase tracking-wide text-neutral-500">
                   {{ fmt(c.createdAt) }}
                 </div>
-                <pre
-                  class="mt-0.5 whitespace-pre-wrap font-sans text-sm text-neutral-100"
-                  >{{ c.bodyMd }}</pre>
+                <div
+                  class="prose prose-invert mt-0.5 max-w-none text-sm text-neutral-100"
+                  v-html="renderMarkdown(c.bodyMd)"
+                />
               </li>
             </ul>
             <div class="mt-3 flex flex-col gap-2">
