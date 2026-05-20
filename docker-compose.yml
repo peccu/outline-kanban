@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: outline-kanban:latest
+    image: ghcr.io/peccu/outline-kanban:latest
     container_name: outline-kanban
     restart: unless-stopped
     ports:
