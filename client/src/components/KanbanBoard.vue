@@ -1,28 +1,79 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import LaneHeader from "./LaneHeader.vue";
 import OutlinePanel from "./OutlinePanel.vue";
-import { useLanes, useMoveNode } from "@/api/queries";
+import {
+  useCreateLane,
+  useLanes,
+  useMoveNode,
+} from "@/api/queries";
+import {
+  clearHidden,
+  isLaneHidden,
+  showLane,
+} from "./hidden-lanes";
 
 const { data, isPending, isError, error } = useLanes();
-const lanes = computed(() => data.value ?? []);
+const allLanes = computed(() => data.value ?? []);
 
-const move = useMoveNode();
+const _cleanup = computed(() => {
+  if (data.value) clearHidden(data.value.map((l) => l.id));
+  return null;
+});
+void _cleanup;
 
-function onMoveLane(
+const moveMutation = useMoveNode();
+const createLane = useCreateLane();
+
+const dragOverLaneId = ref<string | null>(null);
+
+function onMoveLaneShortcut(
   direction: "left" | "right",
   nodeId: string,
   currentLaneId: string,
 ) {
-  const list = lanes.value;
+  // Visible-only navigation across lanes; collapsed lanes still count as
+  // positions so keyboard parity matches DnD parity.
+  const list = allLanes.value;
   const idx = list.findIndex((l) => l.id === currentLaneId);
   if (idx < 0) return;
   const targetIdx = direction === "left" ? idx - 1 : idx + 1;
   const target = list[targetIdx];
   if (!target) return;
-  move.mutate({
+  moveMutation.mutate({
     id: nodeId,
     move: { parentId: null, laneId: target.id, beforeId: null },
   });
+}
+
+function onDragOver(e: DragEvent, laneId: string) {
+  if (!e.dataTransfer?.types.includes("application/x-node-id")) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  dragOverLaneId.value = laneId;
+}
+
+function onDragLeave(e: DragEvent, laneId: string) {
+  const next = e.relatedTarget as HTMLElement | null;
+  if (next && (e.currentTarget as HTMLElement)?.contains(next)) return;
+  if (dragOverLaneId.value === laneId) dragOverLaneId.value = null;
+}
+
+function onDrop(e: DragEvent, laneId: string) {
+  const nodeId = e.dataTransfer?.getData("application/x-node-id");
+  dragOverLaneId.value = null;
+  if (!nodeId) return;
+  e.preventDefault();
+  moveMutation.mutate({
+    id: nodeId,
+    move: { parentId: null, laneId, beforeId: null },
+  });
+}
+
+async function addLane() {
+  const name = prompt("Lane name:");
+  if (!name?.trim()) return;
+  await createLane.mutateAsync({ name: name.trim() });
 }
 </script>
 
@@ -33,31 +84,60 @@ function onMoveLane(
   </div>
   <div
     v-else
-    class="flex h-full min-h-0 gap-3 overflow-x-auto overflow-y-hidden px-4 pb-6"
+    class="flex h-full min-h-0 gap-3 overflow-x-auto overflow-y-hidden px-4 pb-6 pt-3"
   >
-    <section
-      v-for="lane in lanes"
-      :key="lane.id"
-      :data-lane-id="lane.id"
-      class="flex h-full min-h-0 w-72 shrink-0 flex-col rounded-lg border border-neutral-800 bg-neutral-900/40"
-    >
-      <header
-        class="flex items-center gap-2 border-b border-neutral-800 px-3 py-2"
+    <template v-for="lane in allLanes" :key="lane.id">
+      <!-- collapsed lane: thin column, still positioned, still droppable -->
+      <section
+        v-if="isLaneHidden(lane.id)"
+        :data-lane-id="lane.id"
+        class="flex h-full min-h-0 w-10 shrink-0 cursor-pointer flex-col items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/30 py-2 text-neutral-400 transition-colors hover:border-neutral-700 hover:bg-neutral-900/60"
+        :class="dragOverLaneId === lane.id ? 'border-emerald-500/70 bg-emerald-950/30' : ''"
+        :title="`${lane.name} (collapsed, click to expand)`"
+        @click="showLane(lane.id)"
+        @dragover="onDragOver($event, lane.id)"
+        @dragleave="onDragLeave($event, lane.id)"
+        @drop="onDrop($event, lane.id)"
       >
         <span
-          class="inline-block size-2.5 rounded-full"
+          class="mt-1 inline-block size-2 rounded-full"
           :style="{ background: lane.color ?? '#525252' }"
         />
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-neutral-300">
+        <span
+          class="text-[10px] uppercase tracking-wide [writing-mode:vertical-rl] [text-orientation:mixed]"
+        >
           {{ lane.name }}
-        </h2>
-      </header>
-      <div class="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-        <OutlinePanel
-          :lane-id="lane.id"
-          @move-lane="(d, id) => onMoveLane(d, id, lane.id)"
-        />
-      </div>
-    </section>
+        </span>
+      </section>
+
+      <!-- expanded lane -->
+      <section
+        v-else
+        :data-lane-id="lane.id"
+        class="flex h-full min-h-0 w-72 shrink-0 flex-col rounded-lg border border-neutral-800 bg-neutral-900/40 transition-colors"
+        :class="dragOverLaneId === lane.id ? 'border-emerald-500/70 bg-emerald-950/20' : ''"
+      >
+        <LaneHeader :lane="lane" />
+        <div
+          class="min-h-0 flex-1 overflow-y-auto px-2 py-2"
+          @dragover="onDragOver($event, lane.id)"
+          @dragleave="onDragLeave($event, lane.id)"
+          @drop="onDrop($event, lane.id)"
+        >
+          <OutlinePanel
+            :lane-id="lane.id"
+            @move-lane="(d, id) => onMoveLaneShortcut(d, id, lane.id)"
+          />
+        </div>
+      </section>
+    </template>
+
+    <button
+      type="button"
+      class="flex h-12 w-72 shrink-0 items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 text-sm text-neutral-500 transition-colors hover:border-neutral-500 hover:bg-neutral-900/40 hover:text-neutral-300"
+      @click="addLane"
+    >
+      + lane
+    </button>
   </div>
 </template>

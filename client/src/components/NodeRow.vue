@@ -299,6 +299,25 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 
 const modalOpen = ref(false);
 const hasDescription = computed(() => !!(props.node.bodyMd ?? "").trim());
+const dragging = ref(false);
+
+function onDragStart(e: DragEvent) {
+  if (!e.dataTransfer) return;
+  // If the drag starts from inside the contenteditable, let the editor
+  // own the text-drag UX instead of pulling the whole card.
+  const t = e.target as HTMLElement | null;
+  if (t && t.closest(".ProseMirror") && t !== cardEl.value) {
+    return;
+  }
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("application/x-node-id", props.node.id);
+  e.dataTransfer.setData("text/plain", props.node.title);
+  dragging.value = true;
+}
+
+function onDragEnd() {
+  dragging.value = false;
+}
 
 // Keyboard handler for the card itself (when the inline editor is NOT
 // focused). Lets the user navigate, enter edit mode, open the modal,
@@ -411,10 +430,14 @@ onBeforeUnmount(() => {
     <div
       ref="cardEl"
       tabindex="-1"
+      draggable="true"
       :data-card-node-id="node.id"
       class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-neutral-500 focus:bg-neutral-900/70 focus:ring-1 focus:ring-neutral-500"
+      :class="dragging ? 'opacity-40' : ''"
       :style="{ marginLeft: `${depth * 18}px` }"
       @keydown="onCardKeydown"
+      @dragstart="onDragStart"
+      @dragend="onDragEnd"
     >
       <div class="flex items-start gap-2 px-2 py-1.5">
         <div class="min-w-0 flex-1">

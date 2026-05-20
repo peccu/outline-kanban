@@ -66,14 +66,18 @@ function setStatus(s: NodeStatus) {
   update.mutate({ id: node.value.id, patch: { status: s } });
 }
 
+const modalRoot = ref<HTMLElement | null>(null);
+
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") emit("close");
 }
 
 onMounted(() => {
   document.addEventListener("keydown", onKeyDown);
-  // Lock scroll behind the modal
   document.body.style.overflow = "hidden";
+  // Focus the modal so subsequent keystrokes (Escape, Tab to fields) land
+  // inside it instead of leaking back to the card behind.
+  requestAnimationFrame(() => modalRoot.value?.focus());
 });
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onKeyDown);
@@ -94,7 +98,9 @@ function fmt(ts: string | Date | undefined | null) {
       @click.self="emit('close')"
     >
       <div
-        class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950 shadow-2xl"
+        ref="modalRoot"
+        tabindex="-1"
+        class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950 shadow-2xl outline-none"
       >
         <header
           class="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 px-4 py-3"
