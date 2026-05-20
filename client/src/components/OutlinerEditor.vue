@@ -9,11 +9,15 @@ import History from "@tiptap/extension-history";
 import Placeholder from "@tiptap/extension-placeholder";
 import { buildTagSuggestion } from "./mention-suggestion";
 
-const props = defineProps<{
-  modelValue: string;
-  placeholder?: string;
-  autofocus?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: string;
+    placeholder?: string;
+    autofocus?: boolean;
+    editable?: boolean;
+  }>(),
+  { editable: true },
+);
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
@@ -39,6 +43,7 @@ const SingleLineDocument = Document.extend({ content: "paragraph" });
 const editor = new Editor({
   content: serializeFromText(props.modelValue),
   autofocus: props.autofocus ? "end" : false,
+  editable: props.editable,
   editorProps: {
     handleKeyDown: (_view, event) => {
       const mod = event.altKey || event.metaKey;
@@ -166,6 +171,11 @@ function diffMentions() {
 }
 
 watch(
+  () => props.editable,
+  (val) => editor.setEditable(val),
+);
+
+watch(
   () => props.modelValue,
   (val) => {
     const current = serializeToText(editor.getJSON());
@@ -230,6 +240,7 @@ onBeforeUnmount(() => editor.destroy());
   <EditorContent
     :editor="editor"
     class="prose prose-invert max-w-none focus:outline-none [&_p]:m-0 [&_p]:min-h-[1.4em] [&_.is-editor-empty]:before:text-neutral-600 [&_.is-editor-empty]:before:content-[attr(data-placeholder)] [&_.is-editor-empty]:before:pointer-events-none [&_.is-editor-empty]:before:absolute"
+    :class="editable ? '' : 'pointer-events-none select-none'"
   />
 </template>
 

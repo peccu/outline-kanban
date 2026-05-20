@@ -49,8 +49,18 @@ watch(
 const editorRef = ref<InstanceType<typeof OutlinerEditor> | null>(null);
 const cardEl = ref<HTMLDivElement | null>(null);
 
+// Whether the inline title editor is active. In view mode the editor is
+// non-editable and pointer-transparent, so clicks select the card instead
+// of dropping a cursor into the title.
+const editing = ref(!props.node.title.trim());
+
+function enterEditMode() {
+  editing.value = true;
+  requestAnimationFrame(() => editorRef.value?.focus());
+}
+
 function focusEditor() {
-  editorRef.value?.focus();
+  enterEditMode();
 }
 
 function focusSelfCard() {
@@ -99,6 +109,7 @@ function leaveEditMode() {
   editorRef.value?.blur();
   const pm = cardEl.value?.querySelector<HTMLElement>(".ProseMirror");
   pm?.blur();
+  editing.value = false;
   // rAF lets ProseMirror finish its own focus side-effects first.
   requestAnimationFrame(() => focusSelfCard());
 }
@@ -319,6 +330,26 @@ function onDragEnd() {
   dragging.value = false;
 }
 
+function onEditorBlur() {
+  // Editor lost focus (user clicked outside, tabbed away, etc.) — drop
+  // back to view mode so a stray click later doesn't drop a cursor into
+  // the title.
+  if (editing.value) editing.value = false;
+}
+
+function onCardDblClick(e: MouseEvent) {
+  // Ignore double-clicks that originate from the open-detail button or
+  // anywhere outside the title row (e.g. on a child NodeRow).
+  const t = e.target as HTMLElement | null;
+  if (!t) return;
+  if (t.closest('[data-role="open-detail"]')) return;
+  // If the click bubbled up from a descendant card, let that card own it.
+  const ownCard = t.closest("[data-card-node-id]");
+  if (ownCard && ownCard !== cardEl.value) return;
+  e.preventDefault();
+  enterEditMode();
+}
+
 // Keyboard handler for the card itself (when the inline editor is NOT
 // focused). Lets the user navigate, enter edit mode, open the modal,
 // or fire the same indent/move shortcuts as in the editor.
@@ -413,8 +444,12 @@ async function onCardKeydown(e: KeyboardEvent) {
 
 let unregister: (() => void) | null = null;
 onMounted(() => {
+  // focusNode() is used by editor-originated shortcuts (sibling create,
+  // indent/move) which expect to keep the user in edit mode. Land on the
+  // editor and flip into editing.
   unregister = registerFocusable(props.node.id, () => {
-    editorRef.value?.focus();
+    editing.value = true;
+    requestAnimationFrame(() => editorRef.value?.focus());
   });
 });
 onBeforeUnmount(() => {
@@ -432,10 +467,14 @@ onBeforeUnmount(() => {
       tabindex="-1"
       draggable="true"
       :data-card-node-id="node.id"
-      class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-neutral-500 focus:bg-neutral-900/70 focus:ring-1 focus:ring-neutral-500"
-      :class="dragging ? 'opacity-40' : ''"
+      class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-emerald-500/70 focus:bg-neutral-900/70 focus:ring-1 focus:ring-emerald-500/60"
+      :class="[
+        dragging ? 'opacity-40' : '',
+        editing ? 'border-neutral-500 bg-neutral-900/70 ring-1 ring-neutral-500' : '',
+      ]"
       :style="{ marginLeft: `${depth * 18}px` }"
       @keydown="onCardKeydown"
+      @dblclick="onCardDblClick"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
     >
@@ -444,6 +483,7 @@ onBeforeUnmount(() => {
           <OutlinerEditor
             ref="editorRef"
             v-model="title"
+            :editable="editing"
             :placeholder="depth === 0 ? 'new item…' : ''"
             @update:model-value="scheduleSave"
             @key-enter="onEnter"
@@ -458,6 +498,7 @@ onBeforeUnmount(() => {
             @user-input="onUserInput"
             @tag-inserted="onTagInserted"
             @tag-removed="onTagRemoved"
+            @blur="onEditorBlur"
           />
           <div
             v-if="(node.tags && node.tags.length > 0) || hasDescription"
