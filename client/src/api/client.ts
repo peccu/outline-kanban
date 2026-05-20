@@ -14,6 +14,7 @@ export type NodeUpdate = components["schemas"]["NodeUpdate"];
 export type NodeMove = components["schemas"]["NodeMove"];
 export type NodeStatus = components["schemas"]["NodeStatus"];
 export type Tag = components["schemas"]["Tag"];
+export type TagUpdate = components["schemas"]["TagUpdate"];
 export type Comment = components["schemas"]["Comment"];
 
 export class ApiError extends Error {

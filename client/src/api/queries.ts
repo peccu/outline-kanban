@@ -206,6 +206,25 @@ export function useTags() {
   });
 }
 
+export function useUpdateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; patch: { color?: string | null } }) =>
+      unwrap(
+        await api.PATCH("/api/tags/{id}", {
+          params: { path: { id: vars.id } },
+          body: vars.patch,
+        }),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.tags() });
+      // Node listings include their tags, so refresh them too.
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+      qc.invalidateQueries({ queryKey: ["node"] });
+    },
+  });
+}
+
 export function useAttachTag() {
   const qc = useQueryClient();
   return useMutation({

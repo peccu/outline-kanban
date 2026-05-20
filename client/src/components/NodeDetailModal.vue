@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
+import TagPill from "./TagPill.vue";
 import { renderMarkdown } from "@/lib/markdown";
 import { useAttachmentTextarea } from "@/lib/attachments";
 import {
@@ -311,14 +312,10 @@ function fmt(ts: string | Date | undefined | null) {
             </div>
             <ul
               v-if="node?.tags && node.tags.length"
-              class="mt-1 flex flex-wrap gap-1"
+              class="mt-1 flex flex-wrap items-center gap-1"
             >
-              <li
-                v-for="t in node.tags"
-                :key="t.id"
-                class="rounded bg-emerald-500/10 px-1.5 py-0 text-[10px] font-mono text-emerald-300"
-              >
-                #{{ t.name }}
+              <li v-for="t in node.tags" :key="t.id">
+                <TagPill :tag="t" editable />
               </li>
             </ul>
           </div>

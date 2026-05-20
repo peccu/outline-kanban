@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
 import NodeDetailModal from "./NodeDetailModal.vue";
+import TagPill from "./TagPill.vue";
 import { focusCard, navigateCard } from "./card-nav";
 import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
 import { clearDropTarget, isDropBefore } from "./drop-state";
@@ -558,13 +559,11 @@ onBeforeUnmount(() => {
             >
               ¶
             </span>
-            <span
+            <TagPill
               v-for="t in node.tags ?? []"
               :key="t.id"
-              class="rounded bg-emerald-500/10 px-1.5 py-0 text-[10px] font-mono text-emerald-300"
-            >
-              #{{ t.name }}
-            </span>
+              :tag="t"
+            />
           </div>
         </div>
       </div>

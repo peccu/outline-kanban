@@ -58,6 +58,12 @@ export const TagCreate = z
   })
   .openapi("TagCreate");
 
+export const TagUpdate = z
+  .object({
+    color: z.string().max(32).nullable().optional(),
+  })
+  .openapi("TagUpdate");
+
 export const NodeSchema = z
   .object({
     id: z.string(),

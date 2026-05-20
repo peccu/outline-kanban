@@ -7,6 +7,7 @@ import {
   IdParam,
   TagCreate,
   TagSchema,
+  TagUpdate,
   jsonContent,
 } from "../schemas";
 
@@ -53,6 +54,34 @@ tagsRouter.openapi(
       .values({ name: input.name, color: input.color ?? null })
       .returning();
     return c.json(row!, 201);
+  },
+);
+
+tagsRouter.openapi(
+  createRoute({
+    method: "patch",
+    path: "/{id}",
+    tags: ["tags"],
+    summary: "Update a tag (color)",
+    request: {
+      params: IdParam,
+      body: { content: jsonContent(TagUpdate), required: true },
+    },
+    responses: {
+      200: { description: "updated", content: jsonContent(TagSchema) },
+      404: { description: "not found", content: jsonContent(ErrorBody) },
+    },
+  }),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const patch = c.req.valid("json");
+    const [row] = await db
+      .update(tags)
+      .set({ color: patch.color ?? null })
+      .where(eq(tags.id, id))
+      .returning();
+    if (!row) return c.json({ error: "tag not found" }, 404);
+    return c.json(row, 200);
   },
 );
 
