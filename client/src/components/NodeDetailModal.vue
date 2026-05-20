@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
 import { renderMarkdown } from "@/lib/markdown";
+import { useAttachmentTextarea } from "@/lib/attachments";
 import {
   useAddComment,
   useAttachTag,
@@ -128,6 +129,7 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 }
 
 const newComment = ref("");
+const newCommentTextarea = ref<HTMLTextAreaElement | null>(null);
 const dirtyBody = computed(() => (node.value?.bodyMd ?? "") !== body.value);
 
 // Description is shown as rendered Markdown when there is content and
@@ -183,6 +185,18 @@ function onBodyTextareaKeydown(e: KeyboardEvent) {
     e.preventDefault();
     void saveBodyAndLeave();
   }
+}
+
+// Drop a file onto either textarea, or paste a screenshot from the
+// clipboard, and the upload composable inserts a Markdown reference at
+// the caret.
+useAttachmentTextarea(bodyTextarea, body, { onChange: scheduleBodyAutosave });
+useAttachmentTextarea(newCommentTextarea, newComment);
+
+let bodyAutosaveTimer: number | null = null;
+function scheduleBodyAutosave() {
+  if (bodyAutosaveTimer) window.clearTimeout(bodyAutosaveTimer);
+  bodyAutosaveTimer = window.setTimeout(saveBody, 600);
 }
 
 async function postComment() {
@@ -404,6 +418,7 @@ function fmt(ts: string | Date | undefined | null) {
             </ul>
             <div class="mt-3 flex flex-col gap-2">
               <textarea
+                ref="newCommentTextarea"
                 v-model="newComment"
                 class="min-h-[4rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
                 placeholder="add a comment…"
