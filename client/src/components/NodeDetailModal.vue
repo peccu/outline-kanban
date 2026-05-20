@@ -67,6 +67,7 @@ function setStatus(s: NodeStatus) {
 }
 
 const modalRoot = ref<HTMLElement | null>(null);
+const bodyTextarea = ref<HTMLTextAreaElement | null>(null);
 let previousFocus: HTMLElement | null = null;
 
 function onKeyDown(e: KeyboardEvent) {
@@ -77,7 +78,12 @@ onMounted(() => {
   previousFocus = document.activeElement as HTMLElement | null;
   document.addEventListener("keydown", onKeyDown);
   document.body.style.overflow = "hidden";
-  requestAnimationFrame(() => modalRoot.value?.focus());
+  requestAnimationFrame(() => {
+    // Focus the description textarea so the user can start typing
+    // notes immediately. Fall back to the modal root if it isn't
+    // mounted yet (shouldn't happen, but stays accessible).
+    (bodyTextarea.value ?? modalRoot.value)?.focus();
+  });
 });
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onKeyDown);
@@ -194,6 +200,7 @@ function fmt(ts: string | Date | undefined | null) {
               </button>
             </div>
             <textarea
+              ref="bodyTextarea"
               v-model="body"
               class="min-h-[8rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 font-mono text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
               placeholder="add details…"
