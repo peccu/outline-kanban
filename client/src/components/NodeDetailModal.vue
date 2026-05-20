@@ -362,7 +362,7 @@ function fmt(ts: string | Date | undefined | null) {
               tabindex="0"
               role="textbox"
               aria-label="description (double-click or press Enter to edit)"
-              class="prose prose-invert max-w-none cursor-text rounded border border-transparent bg-neutral-900/30 p-2 text-sm text-neutral-100 outline-none transition-colors hover:border-neutral-800 hover:bg-neutral-900/50 focus:border-emerald-500/70 focus:bg-neutral-900/60 focus:ring-1 focus:ring-emerald-500/60"
+              class="md min-h-[3rem] cursor-text rounded border border-transparent bg-neutral-900/30 p-2 outline-none transition-colors hover:border-neutral-800 hover:bg-neutral-900/50 focus:border-emerald-500/70 focus:bg-neutral-900/60 focus:ring-1 focus:ring-emerald-500/60"
               @dblclick="enterBodyEdit"
               @keydown="onBodyViewKeydown"
               v-html="bodyHtml"
@@ -397,7 +397,7 @@ function fmt(ts: string | Date | undefined | null) {
                   {{ fmt(c.createdAt) }}
                 </div>
                 <div
-                  class="prose prose-invert mt-0.5 max-w-none text-sm text-neutral-100"
+                  class="md mt-0.5"
                   v-html="renderMarkdown(c.bodyMd)"
                 />
               </li>
