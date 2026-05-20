@@ -36,3 +36,27 @@ export function isDropAtEndOf(laneId: string): boolean {
   const t = target.value;
   return t !== null && t.laneId === laneId && t.beforeId === null;
 }
+
+// Separate channel for lane-level drag/drop. `beforeLaneId === null`
+// means "drop at the right end of the board".
+export type LaneDropTarget = { beforeLaneId: string | null };
+
+const laneTarget = ref<LaneDropTarget | null>(null);
+
+export function setLaneDropTarget(t: LaneDropTarget | null) {
+  laneTarget.value = t;
+}
+export function clearLaneDropTarget() {
+  laneTarget.value = null;
+}
+export function getLaneDropTarget(): LaneDropTarget | null {
+  return laneTarget.value;
+}
+export function isLaneDropBefore(laneId: string): boolean {
+  const t = laneTarget.value;
+  return t !== null && t.beforeLaneId === laneId;
+}
+export function isLaneDropAtEnd(): boolean {
+  const t = laneTarget.value;
+  return t !== null && t.beforeLaneId === null;
+}

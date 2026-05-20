@@ -6,13 +6,23 @@ import {
   useCreateLane,
   useLanes,
   useMoveNode,
+  useReorderLane,
 } from "@/api/queries";
 import {
   clearHidden,
   isLaneHidden,
   showLane,
 } from "./hidden-lanes";
-import { clearDropTarget, getDropTarget, setDropTarget } from "./drop-state";
+import {
+  clearDropTarget,
+  clearLaneDropTarget,
+  getDropTarget,
+  getLaneDropTarget,
+  isLaneDropAtEnd,
+  isLaneDropBefore,
+  setDropTarget,
+  setLaneDropTarget,
+} from "./drop-state";
 
 const { data, isPending, isError, error } = useLanes();
 const allLanes = computed(() => data.value ?? []);
@@ -25,6 +35,89 @@ void _cleanup;
 
 const moveMutation = useMoveNode();
 const createLane = useCreateLane();
+const reorderLane = useReorderLane();
+const draggingLaneId = ref<string | null>(null);
+
+function shiftLane(direction: "left" | "right", laneId: string) {
+  const list = allLanes.value;
+  const idx = list.findIndex((l) => l.id === laneId);
+  if (idx < 0) return;
+  if (direction === "left") {
+    if (idx === 0) return;
+    // To move left of the current left neighbour: drop *before* that neighbour.
+    const beforeLaneId = list[idx - 1]!.id;
+    reorderLane.mutate({ id: laneId, beforeLaneId });
+  } else {
+    if (idx >= list.length - 1) return;
+    // To move right past the current right neighbour: drop before the lane
+    // after that neighbour (or to the end if none).
+    const after = list[idx + 2];
+    reorderLane.mutate({ id: laneId, beforeLaneId: after ? after.id : null });
+  }
+  // Re-focus the moved lane's header on the next tick so keyboard
+  // chaining keeps working.
+  setTimeout(() => {
+    document
+      .querySelector<HTMLElement>(`[data-lane-header-id="${laneId}"]`)
+      ?.focus();
+  }, 80);
+}
+
+function onLaneDragStart(laneId: string) {
+  draggingLaneId.value = laneId;
+}
+function onLaneDragEnd() {
+  draggingLaneId.value = null;
+  clearLaneDropTarget();
+}
+
+function resolveLaneDropTarget(e: DragEvent): string | null {
+  // Find the first lane section whose horizontal midpoint is right of
+  // the pointer. That lane becomes `beforeLaneId`; if none does, drop
+  // at the end of the board.
+  const sections = Array.from(
+    document.querySelectorAll<HTMLElement>("section[data-lane-id]"),
+  );
+  const x = e.clientX;
+  for (const s of sections) {
+    const r = s.getBoundingClientRect();
+    if (x < r.left + r.width / 2) return s.dataset.laneId ?? null;
+  }
+  return null;
+}
+
+function onBoardDragOver(e: DragEvent) {
+  if (!e.dataTransfer?.types.includes("application/x-lane-id")) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  const beforeLaneId = resolveLaneDropTarget(e);
+  const cur = getLaneDropTarget();
+  if (!cur || cur.beforeLaneId !== beforeLaneId) {
+    setLaneDropTarget({ beforeLaneId });
+  }
+}
+
+function onBoardDrop(e: DragEvent) {
+  const laneId = e.dataTransfer?.getData("application/x-lane-id");
+  const target = getLaneDropTarget();
+  clearLaneDropTarget();
+  draggingLaneId.value = null;
+  if (!laneId) return;
+  e.preventDefault();
+  // Dropping before yourself is a no-op.
+  if (target?.beforeLaneId === laneId) return;
+  reorderLane.mutate({
+    id: laneId,
+    beforeLaneId: target?.beforeLaneId ?? null,
+  });
+}
+
+function onBoardDragLeave(e: DragEvent) {
+  const next = e.relatedTarget as HTMLElement | null;
+  // Only clear when the cursor truly leaves the whole board container.
+  if (next && (e.currentTarget as HTMLElement)?.contains(next)) return;
+  clearLaneDropTarget();
+}
 
 const dragOverLaneId = ref<string | null>(null);
 
@@ -157,14 +250,26 @@ watch(allLanes, () => tryInitialFocus());
   <div
     v-else
     class="flex h-full min-h-0 gap-3 overflow-x-auto overflow-y-hidden px-4 pb-6 pt-3"
+    @dragover="onBoardDragOver"
+    @dragleave="onBoardDragLeave"
+    @drop="onBoardDrop"
   >
     <template v-for="lane in allLanes" :key="lane.id">
+      <!-- lane-level drop indicator: vertical emerald bar before this lane -->
+      <div
+        v-if="isLaneDropBefore(lane.id)"
+        data-role="lane-drop-indicator"
+        class="-mx-1 w-0.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+      />
       <!-- collapsed lane: thin column, still positioned, still droppable -->
       <section
         v-if="isLaneHidden(lane.id)"
         :data-lane-id="lane.id"
         class="flex h-full min-h-0 w-10 shrink-0 cursor-pointer flex-col items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/30 py-2 text-neutral-400 transition-colors hover:border-neutral-700 hover:bg-neutral-900/60"
-        :class="dragOverLaneId === lane.id ? 'border-emerald-500/70 bg-emerald-950/30' : ''"
+        :class="[
+          dragOverLaneId === lane.id ? 'border-emerald-500/70 bg-emerald-950/30' : '',
+          draggingLaneId === lane.id ? 'opacity-40' : '',
+        ]"
         :title="`${lane.name} (collapsed, click to expand)`"
         @click="showLane(lane.id)"
         @dragover="onDragOver($event, lane.id)"
@@ -187,9 +292,17 @@ watch(allLanes, () => tryInitialFocus());
         v-else
         :data-lane-id="lane.id"
         class="flex h-full min-h-0 w-72 shrink-0 flex-col rounded-lg border border-neutral-800 bg-neutral-900/40 transition-colors"
-        :class="dragOverLaneId === lane.id ? 'border-emerald-500/70 bg-emerald-950/20' : ''"
+        :class="[
+          dragOverLaneId === lane.id ? 'border-emerald-500/70 bg-emerald-950/20' : '',
+          draggingLaneId === lane.id ? 'opacity-40' : '',
+        ]"
       >
-        <LaneHeader :lane="lane" />
+        <LaneHeader
+          :lane="lane"
+          @shift-lane="shiftLane"
+          @drag-start="onLaneDragStart"
+          @drag-end="onLaneDragEnd"
+        />
         <div
           class="min-h-0 flex-1 overflow-y-auto px-2 py-2"
           @dragover="onDragOver($event, lane.id)"
@@ -203,6 +316,13 @@ watch(allLanes, () => tryInitialFocus());
         </div>
       </section>
     </template>
+
+    <!-- end-of-board lane drop indicator -->
+    <div
+      v-if="isLaneDropAtEnd()"
+      data-role="lane-drop-indicator"
+      class="-mx-1 w-0.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+    />
 
     <button
       type="button"

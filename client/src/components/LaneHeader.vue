@@ -5,6 +5,38 @@ import { useDeleteLane, useUpdateLane } from "@/api/queries";
 import { hideLane } from "./hidden-lanes";
 
 const props = defineProps<{ lane: Lane }>();
+const emit = defineEmits<{
+  "shift-lane": [direction: "left" | "right", laneId: string];
+  "drag-start": [laneId: string];
+  "drag-end": [];
+}>();
+
+function onHeaderKeydown(e: KeyboardEvent) {
+  if (renameMode.value) return;
+  if (!e.shiftKey) return;
+  if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    emit("shift-lane", "left", props.lane.id);
+  } else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    emit("shift-lane", "right", props.lane.id);
+  }
+}
+
+function onHeaderDragStart(e: DragEvent) {
+  // If the user started the drag from inside the rename input or the
+  // menu button, don't hijack it.
+  const t = e.target as HTMLElement | null;
+  if (t && (t.closest("input") || t.closest("[data-lane-menu]"))) return;
+  if (!e.dataTransfer) return;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("application/x-lane-id", props.lane.id);
+  emit("drag-start", props.lane.id);
+}
+
+function onHeaderDragEnd() {
+  emit("drag-end");
+}
 
 const renameMode = ref(false);
 const draft = ref(props.lane.name);
@@ -77,7 +109,13 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
 <template>
   <header
-    class="flex items-center gap-2 border-b border-neutral-800 px-3 py-2"
+    tabindex="0"
+    draggable="true"
+    :data-lane-header-id="lane.id"
+    class="flex cursor-grab items-center gap-2 rounded-t-lg border-b border-neutral-800 px-3 py-2 outline-none transition-colors focus:bg-neutral-900/50 focus:ring-1 focus:ring-emerald-500/60 active:cursor-grabbing"
+    @keydown="onHeaderKeydown"
+    @dragstart="onHeaderDragStart"
+    @dragend="onHeaderDragEnd"
   >
     <span
       class="inline-block size-2.5 shrink-0 rounded-full"

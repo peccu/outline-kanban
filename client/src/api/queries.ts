@@ -36,6 +36,20 @@ export function useLanes() {
   });
 }
 
+export function useReorderLane() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; beforeLaneId: string | null }) =>
+      unwrap(
+        await api.POST("/api/lanes/{id}/reorder", {
+          params: { path: { id: vars.id } },
+          body: { beforeLaneId: vars.beforeLaneId },
+        }),
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.lanes() }),
+  });
+}
+
 export function useCreateLane() {
   const qc = useQueryClient();
   return useMutation({
