@@ -16,17 +16,22 @@
 //   the first call typically focuses the OLD instance right before it
 //   unmounts. Subsequent retries land on the new instance and re-focus.
 
-const registry = new Map<string, () => void>();
+export type FocusMode = "edit" | "view";
+export type FocusHandler = (mode: FocusMode) => void;
+
+const registry = new Map<string, FocusHandler>();
 let pending: string | null = null;
+let pendingMode: FocusMode = "edit";
 
 function attemptFocus() {
   if (!pending) return;
   const fn = registry.get(pending);
-  if (fn) fn();
+  if (fn) fn(pendingMode);
 }
 
-export function focusNode(id: string) {
+export function focusNode(id: string, mode: FocusMode = "edit") {
   pending = id;
+  pendingMode = mode;
   for (const delay of [0, 16, 50, 150, 300]) {
     setTimeout(attemptFocus, delay);
   }
@@ -44,11 +49,12 @@ export function clearPendingFocus() {
   pending = null;
 }
 
-export function registerFocusable(id: string, focusFn: () => void) {
+export function registerFocusable(id: string, focusFn: FocusHandler) {
   registry.set(id, focusFn);
   if (pending === id) {
-    queueMicrotask(focusFn);
-    setTimeout(focusFn, 0);
+    const mode = pendingMode;
+    queueMicrotask(() => focusFn(mode));
+    setTimeout(() => focusFn(mode), 0);
   }
   return () => {
     if (registry.get(id) === focusFn) registry.delete(id);

@@ -277,7 +277,10 @@ function onBackspaceEmpty() {
   if (props.siblings.length <= 1 && isRoot.value) return; // keep lane non-empty
   const prev = props.siblings[props.index - 1];
   del.mutate(props.node.id);
-  if (prev) focusNode(prev.id);
+  // Land on the previous card in *view* mode — if we dropped into edit
+  // mode, a held-down Backspace would keep eating that card's title
+  // characters. The user can press Enter / dblclick to start editing.
+  if (prev) focusNode(prev.id, "view");
 }
 
 function onUserInput() {
@@ -475,12 +478,18 @@ async function onCardKeydown(e: KeyboardEvent) {
 
 let unregister: (() => void) | null = null;
 onMounted(() => {
-  // focusNode() is used by editor-originated shortcuts (sibling create,
-  // indent/move) which expect to keep the user in edit mode. Land on the
-  // editor and flip into editing.
-  unregister = registerFocusable(props.node.id, () => {
-    editing.value = true;
-    requestAnimationFrame(() => editorRef.value?.focus());
+  // focusNode() lands here via the focus-bus. Most callers (sibling
+  // create, indent/move) want to stay in edit mode; the delete-empty
+  // flow wants view mode so a held-down Backspace doesn't carry over
+  // into the previous card's title.
+  unregister = registerFocusable(props.node.id, (mode) => {
+    if (mode === "view") {
+      editing.value = false;
+      requestAnimationFrame(() => cardEl.value?.focus());
+    } else {
+      editing.value = true;
+      requestAnimationFrame(() => editorRef.value?.focus());
+    }
   });
 });
 onBeforeUnmount(() => {

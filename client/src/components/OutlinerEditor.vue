@@ -81,10 +81,15 @@ const editor = new Editor({
       }
       if (event.key === "Backspace") {
         const empty = editor.state.doc.textContent.length === 0;
-        if (empty) {
+        // Only trigger card-delete on a *fresh* Backspace press — a
+        // held-down auto-repeat that drained the title shouldn't tear
+        // the card out from under the user and start eating the
+        // previous card's title.
+        if (empty && !event.repeat) {
           emit("key-backspace-empty", event);
           return true;
         }
+        if (empty) return true; // swallow the repeat; nothing more to delete
       }
       if (event.key === "Escape") {
         editor.commands.blur();
