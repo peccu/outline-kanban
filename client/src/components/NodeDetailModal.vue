@@ -67,21 +67,24 @@ function setStatus(s: NodeStatus) {
 }
 
 const modalRoot = ref<HTMLElement | null>(null);
+let previousFocus: HTMLElement | null = null;
 
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") emit("close");
 }
 
 onMounted(() => {
+  previousFocus = document.activeElement as HTMLElement | null;
   document.addEventListener("keydown", onKeyDown);
   document.body.style.overflow = "hidden";
-  // Focus the modal so subsequent keystrokes (Escape, Tab to fields) land
-  // inside it instead of leaking back to the card behind.
   requestAnimationFrame(() => modalRoot.value?.focus());
 });
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", onKeyDown);
   document.body.style.overflow = "";
+  // Return focus to whatever element opened the modal — typically the
+  // card div, so card-focus shortcuts (Enter, ↑↓←→) keep working.
+  previousFocus?.focus?.();
 });
 
 function fmt(ts: string | Date | undefined | null) {

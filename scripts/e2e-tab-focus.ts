@@ -20,9 +20,9 @@ await page.waitForTimeout(300);
 await page.keyboard.type("parent");
 await page.waitForTimeout(200);
 
-// Sibling
-await page.keyboard.press("Enter");
-await page.waitForTimeout(300);
+// Create a sibling (M-Enter, since plain Enter now confirms + blurs)
+await page.keyboard.press("Alt+Enter");
+await page.waitForTimeout(400);
 await page.keyboard.type("child-to-be");
 await page.waitForTimeout(200);
 
