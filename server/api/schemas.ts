@@ -149,3 +149,14 @@ export const ErrorBody = z
 export const jsonContent = <S extends z.ZodTypeAny>(schema: S) => ({
   "application/json": { schema },
 });
+
+export const AttachmentSchema = z
+  .object({
+    id: z.string(),
+    filename: z.string(),
+    mime: z.string(),
+    size: z.number().int().nonnegative(),
+    url: z.string(),
+    createdAt: z.coerce.date(),
+  })
+  .openapi("Attachment");

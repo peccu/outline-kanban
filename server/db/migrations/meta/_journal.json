@@ -8,6 +8,13 @@
       "when": 1779196259428,
       "tag": "0000_freezing_ezekiel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779300546797,
+      "tag": "0001_fast_black_widow",
+      "breakpoints": true
     }
   ]
 }

@@ -110,6 +110,17 @@ export const comments = sqliteTable(
   }),
 );
 
+// Uploaded files (images pasted from the clipboard or dropped onto a
+// description / comment textarea). The blob lives on disk under
+// ATTACHMENTS_DIR/<id>; this row holds the metadata.
+export const attachments = sqliteTable("attachments", {
+  id: id(),
+  filename: text("filename").notNull(),
+  mime: text("mime").notNull(),
+  size: integer("size").notNull(),
+  createdAt: createdAt(),
+});
+
 export const lanesRelations = relations(lanes, ({ many }) => ({
   nodes: many(nodes),
 }));
