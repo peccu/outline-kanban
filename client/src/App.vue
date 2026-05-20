@@ -10,7 +10,7 @@ import KanbanBoard from "@/components/KanbanBoard.vue";
       <h1 class="text-lg font-semibold tracking-tight">outline-kanban</h1>
       <div class="flex items-center gap-3 text-xs text-neutral-500">
         <span class="font-mono">
-          Enter confirm · ↑↓←→ nav · o open · M-Enter sibling · Tab cycle · M-←→ indent · Shift+←→ move lane
+          ↑↓←→ nav · Enter / dbl-click edit · o open · M-Enter sibling · Tab cycle · M-←→ indent · Shift+←→ move lane
         </span>
         <a
           href="/docs"

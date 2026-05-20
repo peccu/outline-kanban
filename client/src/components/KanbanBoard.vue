@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import LaneHeader from "./LaneHeader.vue";
 import OutlinePanel from "./OutlinePanel.vue";
 import {
@@ -75,6 +75,39 @@ async function addLane() {
   if (!name?.trim()) return;
   await createLane.mutateAsync({ name: name.trim() });
 }
+
+// On first load, drop focus on the first card so the user can see where
+// keyboard input will go. If there are no cards yet, fall back to the
+// first lane's +add button. Only do this once per app session and only
+// if the user hasn't already focused something themselves.
+let initialFocusDone = false;
+function tryInitialFocus() {
+  if (initialFocusDone) return;
+  const ae = document.activeElement;
+  if (ae && ae !== document.body && ae.tagName !== "HTML") return;
+  const target =
+    document.querySelector<HTMLElement>("[data-card-node-id]") ??
+    document.querySelector<HTMLElement>("button[data-role='add-node']");
+  if (!target) return;
+  target.focus({ preventScroll: false });
+  initialFocusDone = true;
+}
+
+onMounted(() => {
+  // Lanes/nodes load asynchronously — retry a few times until something
+  // is in the DOM.
+  let attempts = 0;
+  const tick = () => {
+    tryInitialFocus();
+    if (initialFocusDone) return;
+    if (++attempts > 20) return;
+    setTimeout(tick, 75);
+  };
+  tick();
+});
+
+// If the very first lane finishes loading later than expected, re-try.
+watch(allLanes, () => tryInitialFocus());
 </script>
 
 <template>
