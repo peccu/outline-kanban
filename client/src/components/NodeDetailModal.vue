@@ -76,6 +76,14 @@ function enterTitleEdit() {
   requestAnimationFrame(() => titleEditorRef.value?.focus());
 }
 
+function onTitleContainerKeydown(e: KeyboardEvent) {
+  if (titleEditing.value) return; // editor handles its own keys
+  if (e.key === "Enter") {
+    e.preventDefault();
+    enterTitleEdit();
+  }
+}
+
 let titleSaveTimer: number | null = null;
 function scheduleTitleSave() {
   if (titleSaveTimer) window.clearTimeout(titleSaveTimer);
@@ -267,23 +275,39 @@ function fmt(ts: string | Date | undefined | null) {
               card
             </div>
             <div
-              class="text-base font-medium text-neutral-100"
-              :title="title || '(untitled)'"
+              :tabindex="titleEditing ? -1 : 0"
+              class="group/title flex items-center gap-2 rounded border border-transparent px-1.5 py-0.5 -mx-1.5 text-base font-medium text-neutral-100 outline-none transition-colors"
+              :class="
+                titleEditing
+                  ? 'border-neutral-500 bg-neutral-900/70 ring-1 ring-neutral-500 cursor-text'
+                  : 'cursor-pointer hover:border-neutral-800 hover:bg-neutral-900/50 focus:border-emerald-500/70 focus:bg-neutral-900/60 focus:ring-1 focus:ring-emerald-500/60'
+              "
+              :title="titleEditing ? '' : 'Enter or double-click to edit'"
               @dblclick="enterTitleEdit"
+              @keydown="onTitleContainerKeydown"
             >
-              <OutlinerEditor
-                ref="titleEditorRef"
-                v-model="title"
-                :editable="titleEditing"
-                placeholder="(untitled)"
-                @update:model-value="scheduleTitleSave"
-                @key-enter="onTitleEnter"
-                @key-mod-enter="onTitleEnter"
-                @key-escape="onTitleEscape"
-                @blur="onTitleBlur"
-                @tag-inserted="onTagInserted"
-                @tag-removed="onTagRemoved"
-              />
+              <div class="min-w-0 flex-1">
+                <OutlinerEditor
+                  ref="titleEditorRef"
+                  v-model="title"
+                  :editable="titleEditing"
+                  placeholder="(untitled — click to edit)"
+                  @update:model-value="scheduleTitleSave"
+                  @key-enter="onTitleEnter"
+                  @key-mod-enter="onTitleEnter"
+                  @key-escape="onTitleEscape"
+                  @blur="onTitleBlur"
+                  @tag-inserted="onTagInserted"
+                  @tag-removed="onTagRemoved"
+                />
+              </div>
+              <span
+                v-if="!titleEditing"
+                aria-hidden="true"
+                class="shrink-0 text-xs text-neutral-600 opacity-0 transition-opacity group-hover/title:opacity-100 group-focus/title:opacity-100"
+              >
+                ✎ edit
+              </span>
             </div>
             <ul
               v-if="node?.tags && node.tags.length"
