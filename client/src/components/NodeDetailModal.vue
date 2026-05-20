@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import OutlinerEditor from "./OutlinerEditor.vue";
 import {
   useAddComment,
+  useAttachTag,
   useComments,
+  useDetachTag,
   useNode,
   useUpdateNode,
 } from "@/api/queries";
@@ -33,6 +36,8 @@ const { data: comments, isPending: commentsLoading } = useComments(idRef);
 
 const update = useUpdateNode();
 const add = useAddComment();
+const attach = useAttachTag();
+const detach = useDetachTag();
 
 const body = ref("");
 watch(
@@ -42,6 +47,75 @@ watch(
   },
   { immediate: true },
 );
+
+const title = ref("");
+watch(
+  () => node.value?.title,
+  (v) => {
+    if (v !== undefined && title.value !== v) title.value = v ?? "";
+  },
+  { immediate: true },
+);
+
+const titleEditing = ref(false);
+const titleEditorRef = ref<InstanceType<typeof OutlinerEditor> | null>(null);
+
+function enterTitleEdit() {
+  titleEditing.value = true;
+  requestAnimationFrame(() => titleEditorRef.value?.focus());
+}
+
+let titleSaveTimer: number | null = null;
+function scheduleTitleSave() {
+  if (titleSaveTimer) window.clearTimeout(titleSaveTimer);
+  titleSaveTimer = window.setTimeout(flushTitleSave, 400);
+}
+function flushTitleSave() {
+  if (titleSaveTimer) {
+    window.clearTimeout(titleSaveTimer);
+    titleSaveTimer = null;
+  }
+  if (!node.value) return;
+  if (title.value !== node.value.title) {
+    update.mutate({ id: node.value.id, patch: { title: title.value } });
+  }
+}
+function onTitleEnter() {
+  flushTitleSave();
+  titleEditing.value = false;
+}
+function onTitleEscape() {
+  flushTitleSave();
+  titleEditing.value = false;
+}
+function onTitleBlur() {
+  if (!titleEditing.value) return;
+  flushTitleSave();
+  titleEditing.value = false;
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function onTagInserted(t: { id: string | null; label: string }) {
+  if (!node.value) return;
+  if (t.id && UUID_RE.test(t.id)) {
+    attach.mutate({ nodeId: node.value.id, tag: { tagId: t.id } });
+  } else {
+    attach.mutate({ nodeId: node.value.id, tag: { name: t.label } });
+  }
+}
+function onTagRemoved(t: { id: string | null; label: string }) {
+  if (!node.value) return;
+  let tagId: string | null = null;
+  if (t.id && UUID_RE.test(t.id)) tagId = t.id;
+  else {
+    const match = (node.value.tags ?? []).find((tag) => tag.name === t.label);
+    if (match) tagId = match.id;
+  }
+  if (!tagId) return;
+  detach.mutate({ nodeId: node.value.id, tagId });
+}
 
 const newComment = ref("");
 const dirtyBody = computed(() => (node.value?.bodyMd ?? "") !== body.value);
@@ -120,12 +194,25 @@ function fmt(ts: string | Date | undefined | null) {
             >
               card
             </div>
-            <h2
-              class="truncate text-base font-medium text-neutral-100"
-              :title="node?.title ?? ''"
+            <div
+              class="text-base font-medium text-neutral-100"
+              :title="title || '(untitled)'"
+              @dblclick="enterTitleEdit"
             >
-              {{ node?.title || "(untitled)" }}
-            </h2>
+              <OutlinerEditor
+                ref="titleEditorRef"
+                v-model="title"
+                :editable="titleEditing"
+                placeholder="(untitled)"
+                @update:model-value="scheduleTitleSave"
+                @key-enter="onTitleEnter"
+                @key-mod-enter="onTitleEnter"
+                @key-escape="onTitleEscape"
+                @blur="onTitleBlur"
+                @tag-inserted="onTagInserted"
+                @tag-removed="onTagRemoved"
+              />
+            </div>
             <ul
               v-if="node?.tags && node.tags.length"
               class="mt-1 flex flex-wrap gap-1"
