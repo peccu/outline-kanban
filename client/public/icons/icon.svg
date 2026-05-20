@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="outline-kanban">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1f17"/>
+      <stop offset="1" stop-color="#0a0a0a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background with rounded corners (browser may further mask) -->
+  <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bg)"/>
+
+  <!-- Subtle inner border -->
+  <rect x="8" y="8" width="496" height="496" rx="88" ry="88" fill="none" stroke="#1f2937" stroke-opacity="0.6" stroke-width="2"/>
+
+  <!-- Three kanban columns -->
+  <g>
+    <!-- Column 1 (outline-style content) -->
+    <rect x="76" y="120" width="112" height="288" rx="14" ry="14" fill="#171717" stroke="#262626" stroke-width="2"/>
+    <rect x="76" y="120" width="112" height="6" rx="3" ry="3" fill="#3f3f46"/>
+
+    <!-- Outline tree: parent bullet + 2 indented children -->
+    <!-- Parent row -->
+    <circle cx="94" cy="156" r="4" fill="#a3a3a3"/>
+    <rect x="106" y="150" width="68" height="12" rx="3" fill="#3f3f46"/>
+    <!-- Indent guide line -->
+    <line x1="94" y1="166" x2="94" y2="220" stroke="#404040" stroke-width="1.5"/>
+    <!-- Child row 1 -->
+    <line x1="94" y1="190" x2="108" y2="190" stroke="#404040" stroke-width="1.5"/>
+    <circle cx="114" cy="190" r="3" fill="#737373"/>
+    <rect x="122" y="184" width="54" height="10" rx="3" fill="#2a2a2a"/>
+    <!-- Child row 2 (highlighted) -->
+    <line x1="94" y1="218" x2="108" y2="218" stroke="#404040" stroke-width="1.5"/>
+    <circle cx="114" cy="218" r="3" fill="#10b981"/>
+    <rect x="122" y="212" width="54" height="10" rx="3" fill="#065f46"/>
+
+    <!-- Bottom card -->
+    <rect x="86" y="246" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="94" y="256" width="56" height="6" rx="2" fill="#525252"/>
+    <rect x="94" y="268" width="36" height="5" rx="2" fill="#3f3f3f"/>
+
+    <rect x="86" y="294" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="94" y="304" width="44" height="6" rx="2" fill="#525252"/>
+    <rect x="94" y="316" width="28" height="5" rx="2" fill="#3f3f3f"/>
+
+    <!-- Column 2 (the active "doing" column with accent header) -->
+    <rect x="200" y="120" width="112" height="288" rx="14" ry="14" fill="#171717" stroke="#2a2a2a" stroke-width="2"/>
+    <rect x="200" y="120" width="112" height="6" rx="3" ry="3" fill="url(#accent)"/>
+
+    <!-- Active card (emerald) -->
+    <rect x="210" y="142" width="92" height="44" rx="10" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="218" y="152" width="60" height="6" rx="2" fill="#34d399"/>
+    <rect x="218" y="164" width="44" height="5" rx="2" fill="#10b981" fill-opacity="0.7"/>
+    <rect x="218" y="174" width="28" height="5" rx="2" fill="#10b981" fill-opacity="0.5"/>
+
+    <rect x="210" y="198" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="218" y="208" width="56" height="6" rx="2" fill="#525252"/>
+    <rect x="218" y="220" width="36" height="5" rx="2" fill="#3f3f3f"/>
+
+    <rect x="210" y="246" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="218" y="256" width="64" height="6" rx="2" fill="#525252"/>
+    <rect x="218" y="268" width="40" height="5" rx="2" fill="#3f3f3f"/>
+
+    <rect x="210" y="294" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="218" y="304" width="50" height="6" rx="2" fill="#525252"/>
+    <rect x="218" y="316" width="32" height="5" rx="2" fill="#3f3f3f"/>
+
+    <!-- Column 3 -->
+    <rect x="324" y="120" width="112" height="288" rx="14" ry="14" fill="#171717" stroke="#262626" stroke-width="2"/>
+    <rect x="324" y="120" width="112" height="6" rx="3" ry="3" fill="#3f3f46"/>
+
+    <rect x="334" y="142" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="342" y="152" width="56" height="6" rx="2" fill="#525252"/>
+    <rect x="342" y="164" width="36" height="5" rx="2" fill="#3f3f3f"/>
+
+    <rect x="334" y="190" width="92" height="36" rx="8" fill="#1f1f1f" stroke="#2e2e2e" stroke-width="1"/>
+    <rect x="342" y="200" width="44" height="6" rx="2" fill="#525252"/>
+    <rect x="342" y="212" width="28" height="5" rx="2" fill="#3f3f3f"/>
+  </g>
+</svg>
