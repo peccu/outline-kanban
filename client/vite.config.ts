@@ -9,10 +9,10 @@ export default defineConfig({
   root: clientDir,
   plugins: [vue(), tailwindcss()],
   server: {
-    port: 5174,
+    port: 8788,
     proxy: {
-      "/api": "http://localhost:5173",
-      "/docs": "http://localhost:5173",
+      "/api": "http://localhost:8787",
+      "/docs": "http://localhost:8787",
     },
   },
   resolve: {

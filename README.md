@@ -24,11 +24,11 @@ people who think in `org-mode` and want something lighter than Wekan.
 
 ```bash
 bun install
-bun run dev          # client on :5174, server (+ Swagger UI) on :5173
+bun run dev          # client on :8788, server (+ Swagger UI) on :8787
 ```
 
-Open <http://localhost:5174>. The Swagger UI for the API lives at
-<http://localhost:5173/docs>.
+Open <http://localhost:8788>. The Swagger UI for the API lives at
+<http://localhost:8787/docs>.
 
 On first boot the server creates `outline-kanban.sqlite` next to the repo,
 runs Drizzle migrations, and seeds four default lanes (Inbox / Today / Doing /
@@ -42,12 +42,16 @@ build).
 
 ```bash
 docker compose up -d
-# → http://localhost:5173
+# → http://localhost:8787
 ```
 
 The DB file is stored in a named volume (`outline-kanban-data`), mounted at
 `/data/outline-kanban.sqlite` inside the container. Override `DB_PATH` /
 `PORT` via env if you want to move it elsewhere.
+
+> The project deliberately uses `8787` (server) and `8788` (Vite dev) instead
+> of Vite's `5173`/`5174` defaults, so it doesn't fight any other JS dev
+> server you might be running in parallel.
 
 ---
 

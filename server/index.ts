@@ -57,7 +57,7 @@ if (isProd) {
   });
 }
 
-const port = Number(process.env.PORT ?? 5173);
+const port = Number(process.env.PORT ?? 8787);
 
 export default {
   port,

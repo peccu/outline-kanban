@@ -1,16 +1,16 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     image: ghcr.io/peccu/outline-kanban:latest
     container_name: outline-kanban
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "8787:8787"
     environment:
       NODE_ENV: production
-      PORT: "5173"
+      PORT: "8787"
       DB_PATH: /data/outline-kanban.sqlite
     volumes:
       - outline-kanban-data:/data
