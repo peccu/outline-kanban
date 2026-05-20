@@ -337,15 +337,43 @@ function onEditorBlur() {
   if (editing.value) editing.value = false;
 }
 
-function onCardDblClick(e: MouseEvent) {
-  // Ignore double-clicks that originate from the open-detail button or
-  // anywhere outside the title row (e.g. on a child NodeRow).
+function isEventOnOwnCard(e: Event): boolean {
   const t = e.target as HTMLElement | null;
-  if (!t) return;
-  if (t.closest('[data-role="open-detail"]')) return;
-  // If the click bubbled up from a descendant card, let that card own it.
+  if (!t) return false;
   const ownCard = t.closest("[data-card-node-id]");
-  if (ownCard && ownCard !== cardEl.value) return;
+  return ownCard === cardEl.value;
+}
+
+// Single click = focus the card and open the detail modal. We delay the
+// modal-open slightly so a follow-up dblclick can cancel it and enter
+// title-edit mode instead.
+let pendingClickTimer: number | null = null;
+function cancelPendingClick() {
+  if (pendingClickTimer !== null) {
+    window.clearTimeout(pendingClickTimer);
+    pendingClickTimer = null;
+  }
+}
+function onCardClick(e: MouseEvent) {
+  if (!isEventOnOwnCard(e)) return;
+  if (editing.value) return; // already in edit mode — let the editor handle it
+  // detail >= 2 means this click is part of a double-click sequence; ignore.
+  if (e.detail >= 2) {
+    cancelPendingClick();
+    return;
+  }
+  cancelPendingClick();
+  focusSelfCard();
+  pendingClickTimer = window.setTimeout(() => {
+    pendingClickTimer = null;
+    modalOpen.value = true;
+  }, 220);
+}
+
+function onCardDblClick(e: MouseEvent) {
+  if (!isEventOnOwnCard(e)) return;
+  if (editing.value) return; // editor owns dblclick (word selection)
+  cancelPendingClick();
   e.preventDefault();
   enterEditMode();
 }
@@ -467,13 +495,14 @@ onBeforeUnmount(() => {
       tabindex="-1"
       draggable="true"
       :data-card-node-id="node.id"
-      class="group rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-emerald-500/70 focus:bg-neutral-900/70 focus:ring-1 focus:ring-emerald-500/60"
+      class="group cursor-pointer rounded-md border border-neutral-800/60 bg-neutral-900/30 outline-none transition-colors hover:border-neutral-700 hover:bg-neutral-900/60 focus:border-emerald-500/70 focus:bg-neutral-900/70 focus:ring-1 focus:ring-emerald-500/60"
       :class="[
         dragging ? 'opacity-40' : '',
-        editing ? 'border-neutral-500 bg-neutral-900/70 ring-1 ring-neutral-500' : '',
+        editing ? 'cursor-text border-neutral-500 bg-neutral-900/70 ring-1 ring-neutral-500' : '',
       ]"
       :style="{ marginLeft: `${depth * 18}px` }"
       @keydown="onCardKeydown"
+      @click="onCardClick"
       @dblclick="onCardDblClick"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
@@ -520,15 +549,6 @@ onBeforeUnmount(() => {
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          data-role="open-detail"
-          class="mt-0.5 shrink-0 rounded p-1 text-xs text-neutral-500 opacity-0 transition hover:bg-neutral-800 hover:text-neutral-200 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-neutral-600 group-hover:opacity-100"
-          title="open details"
-          @click="modalOpen = true"
-        >
-          ⌄
-        </button>
       </div>
     </div>
     <NodeRow

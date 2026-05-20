@@ -29,20 +29,19 @@ const todayLane = page
 await todayLane.locator('button[data-role="add-node"]').click();
 await page.waitForTimeout(300);
 await page.keyboard.type("ship modal");
-await page.waitForTimeout(300);
+await page.waitForTimeout(200);
+await page.keyboard.press("Enter"); // confirm and leave title-edit mode
+await page.waitForTimeout(200);
 
 await page.screenshot({ path: "/tmp/modal-00-card.png", fullPage: true });
 
-// Hover the card and open the detail modal
+// Single-click the card to focus it and (after a short delay) open the modal.
 const card = page
   .locator("section", { has: page.getByText("Today", { exact: true }) })
-  .locator("text=ship modal")
+  .locator("[data-card-node-id]")
   .first();
-await card.hover();
-await page.waitForTimeout(200);
-const openBtn = page.locator('button[data-role="open-detail"]').first();
-await openBtn.click({ force: true });
-await page.waitForTimeout(400);
+await card.click();
+await page.waitForTimeout(500);
 
 await page.screenshot({ path: "/tmp/modal-01-opened.png", fullPage: true });
 
