@@ -224,8 +224,51 @@ function setStatus(s: NodeStatus) {
 const modalRoot = ref<HTMLElement | null>(null);
 let previousFocus: HTMLElement | null = null;
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])';
+
+function focusableInModal(): HTMLElement[] {
+  const root = modalRoot.value;
+  if (!root) return [];
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+  );
+}
+
 function onKeyDown(e: KeyboardEvent) {
-  if (e.key === "Escape") emit("close");
+  if (e.key === "Escape") {
+    emit("close");
+    return;
+  }
+  if (e.key === "Tab") {
+    // Trap Tab inside the modal. Without this, Tab from the last
+    // focusable element escapes back to elements behind the modal
+    // (lane headers, +add buttons, …) which is confusing.
+    const root = modalRoot.value;
+    if (!root) return;
+    const els = focusableInModal();
+    if (els.length === 0) {
+      e.preventDefault();
+      root.focus();
+      return;
+    }
+    const first = els[0]!;
+    const last = els[els.length - 1]!;
+    const active = document.activeElement as HTMLElement | null;
+    // If focus is somehow outside the modal, pull it back in.
+    if (!active || !root.contains(active)) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+      return;
+    }
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 }
 
 onMounted(() => {
