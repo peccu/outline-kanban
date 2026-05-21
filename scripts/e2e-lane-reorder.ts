@@ -110,6 +110,23 @@ const dndOk =
 
 const ok = kbdOk && indicatorShown && dndOk && errs.length === 0;
 
+// Restore the original lane order so later e2e suites that depend on the
+// seed sequence (e.g. e2e-card-focus's left/right traversal) keep working.
+// We reorder from the back so each placement isn't clobbered by the next.
+{
+  const lanes = (await fetch(`${API_URL}/api/lanes`).then((r) => r.json())) as any[];
+  const byName = Object.fromEntries(lanes.map((l: any) => [l.name, l.id]));
+  const ids = initial.map((n) => byName[n]).filter(Boolean);
+  for (let i = ids.length - 1; i >= 0; i--) {
+    const beforeLaneId = ids[i + 1] ?? null;
+    await fetch(`${API_URL}/api/lanes/${ids[i]}/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beforeLaneId }),
+    });
+  }
+}
+
 console.log(`\npage errors: ${errs.length}`);
 for (const e of errs) console.log(e);
 console.log(`result: ${ok ? "PASS" : "FAIL"}`);
