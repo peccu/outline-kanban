@@ -137,6 +137,12 @@ export const CommentCreate = z
   })
   .openapi("CommentCreate");
 
+export const CommentUpdate = z
+  .object({
+    bodyMd: z.string().min(1).max(10_000),
+  })
+  .openapi("CommentUpdate");
+
 export const AttachTag = z
   .object({
     tagId: z.string().optional(),

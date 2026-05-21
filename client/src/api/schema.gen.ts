@@ -931,7 +931,42 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update a comment's body */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CommentUpdate"];
+                };
+            };
+            responses: {
+                /** @description ok */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Comment"];
+                    };
+                };
+                /** @description not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/attachments": {
@@ -1136,6 +1171,9 @@ export interface components {
             createdAt: string | null;
         };
         CommentCreate: {
+            bodyMd: string;
+        };
+        CommentUpdate: {
             bodyMd: string;
         };
         Attachment: {

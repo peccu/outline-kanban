@@ -5,6 +5,7 @@ import { comments, nodes } from "../../db/schema";
 import {
   CommentCreate,
   CommentSchema,
+  CommentUpdate,
   ErrorBody,
   IdParam,
   jsonContent,
@@ -63,6 +64,34 @@ commentsRouter.openapi(
       .values({ nodeId: id, bodyMd: input.bodyMd })
       .returning();
     return c.json(row!, 201);
+  },
+);
+
+commentsRouter.openapi(
+  createRoute({
+    method: "patch",
+    path: "/comments/{id}",
+    tags: ["comments"],
+    summary: "Update a comment's body",
+    request: {
+      params: IdParam,
+      body: { content: jsonContent(CommentUpdate), required: true },
+    },
+    responses: {
+      200: { description: "ok", content: jsonContent(CommentSchema) },
+      404: { description: "not found", content: jsonContent(ErrorBody) },
+    },
+  }),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const patch = c.req.valid("json");
+    const [row] = await db
+      .update(comments)
+      .set({ bodyMd: patch.bodyMd })
+      .where(eq(comments.id, id))
+      .returning();
+    if (!row) return c.json({ error: "comment not found" }, 404);
+    return c.json(row, 200);
   },
 );
 

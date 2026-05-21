@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
 import TagPill from "./TagPill.vue";
+import CommentItem from "./CommentItem.vue";
 import { renderMarkdown } from "@/lib/markdown";
 import { useAttachmentTextarea } from "@/lib/attachments";
 import {
@@ -248,11 +249,6 @@ onBeforeUnmount(() => {
   previousFocus?.focus?.();
 });
 
-function fmt(ts: string | Date | undefined | null) {
-  if (!ts) return "";
-  const d = ts instanceof Date ? ts : new Date(ts);
-  return d.toLocaleString();
-}
 </script>
 
 <template>
@@ -423,19 +419,7 @@ function fmt(ts: string | Date | undefined | null) {
               loading…
             </div>
             <ul v-else class="flex flex-col gap-2">
-              <li
-                v-for="c in comments"
-                :key="c.id"
-                class="rounded border border-neutral-800 bg-neutral-900/40 p-2"
-              >
-                <div class="text-[10px] uppercase tracking-wide text-neutral-500">
-                  {{ fmt(c.createdAt) }}
-                </div>
-                <div
-                  class="md mt-0.5"
-                  v-html="renderMarkdown(c.bodyMd)"
-                />
-              </li>
+              <CommentItem v-for="c in comments" :key="c.id" :comment="c" />
             </ul>
             <div class="mt-3 flex flex-col gap-2">
               <textarea

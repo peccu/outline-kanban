@@ -308,3 +308,38 @@ export function useAddComment() {
       qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) }),
   });
 }
+
+export function useUpdateComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      id: string;
+      nodeId: string;
+      bodyMd: string;
+    }) =>
+      unwrap(
+        await api.PATCH("/api/comments/{id}", {
+          params: { path: { id: vars.id } },
+          body: { bodyMd: vars.bodyMd },
+        }),
+      ),
+    onSuccess: (_c, vars) =>
+      qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) }),
+  });
+}
+
+export function useDeleteComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; nodeId: string }) => {
+      const r = await api.DELETE("/api/comments/{id}", {
+        params: { path: { id: vars.id } },
+      });
+      if (r.response.status !== 204 && r.error)
+        throw new Error("delete failed");
+      return vars;
+    },
+    onSuccess: (_c, vars) =>
+      qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) }),
+  });
+}
