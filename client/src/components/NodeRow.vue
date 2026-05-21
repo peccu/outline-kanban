@@ -276,6 +276,7 @@ function onBackspaceEmpty() {
   resetCycle(props.node.id);
   if (children.value.length > 0) return;
   if (props.siblings.length <= 1 && isRoot.value) return; // keep lane non-empty
+  if (!confirm("Delete this card?")) return;
   const prev = props.siblings[props.index - 1];
   del.mutate(props.node.id);
   // Land on the previous card in *view* mode — if we dropped into edit

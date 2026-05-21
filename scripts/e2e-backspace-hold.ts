@@ -22,6 +22,12 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1400, height: 700 } });
 const errs: string[] = [];
 page.on("pageerror", (e) => errs.push(e.message));
+// Auto-accept the "Delete this card?" confirm dialog so the test can
+// exercise the card-delete path. The held-Backspace branch never
+// triggers a dialog (it suppresses repeat events before the delete
+// path is reached), so we only need this for the explicit fresh
+// Backspace below.
+page.on("dialog", (d) => d.accept());
 
 await page.goto(APP_URL);
 await page.waitForLoadState("networkidle");
