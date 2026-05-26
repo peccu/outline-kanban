@@ -196,22 +196,25 @@ bun run db:migrate     # applies them to DB_PATH (or ./outline-kanban.sqlite)
 
 ## Tests
 
-End-to-end Playwright suites live under `scripts/e2e-*.ts`. Start the dev
-server first, then run any of:
+End-to-end Playwright suites live under `scripts/e2e-*.ts`. Use the runner
+to execute them safely — it starts a dedicated server on separate ports with
+an isolated test DB (`outline-kanban-test.sqlite`) so your dev data is never
+touched:
 
 ```bash
-bun run dev &                              # background
-bun run scripts/e2e-smoke.ts               # boot, render, no console errors
-bun run scripts/e2e-card-focus.ts          # arrow nav, Enter to edit, modal open
-bun run scripts/e2e-detail-modal.ts        # status, body, comments
-bun run scripts/e2e-keymap.ts              # Tab cycle, M-Enter sibling, M-←/→
-bun run scripts/e2e-lanes.ts               # add/rename/collapse/delete, DnD
-bun run scripts/e2e-tab-focus.ts           # focus retention through indent
-bun run scripts/e2e-tag-remove.ts          # #tag auto-attach / auto-detach
-bun run scripts/e2e-initial-focus-and-nav.ts  # initial focus + +add nav
-bun run scripts/e2e-dnd-indicator.ts       # drop indicator + precise insert
-bun run scripts/e2e-pwa.ts                 # manifest, icons, SW registration
-                                            # (run against the prod build)
+bun run test:e2e                           # all suites (auto-discovered)
+bun run test:e2e e2e-smoke e2e-lanes       # specific suites only
+```
+
+The runner discovers suites automatically by globbing `scripts/e2e-*.ts`, so
+adding a new suite file is enough — no registration needed.
+
+If you need to run a single suite against an already-running server (advanced),
+set `APP_URL` and `API_URL` explicitly:
+
+```bash
+APP_URL=http://localhost:8788 API_URL=http://localhost:8787 \
+  bun run scripts/e2e-smoke.ts
 ```
 
 `bun run typecheck` does both the server `tsc` and `vue-tsc` for the client.
