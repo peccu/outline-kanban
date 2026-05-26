@@ -5,14 +5,17 @@ import { fileURLToPath } from "node:url";
 
 const clientDir = fileURLToPath(new URL(".", import.meta.url));
 
+const apiTarget = process.env.E2E_API_TARGET ?? "http://localhost:8787";
+const appPort = Number(process.env.E2E_APP_PORT ?? 8788);
+
 export default defineConfig({
   root: clientDir,
   plugins: [vue(), tailwindcss()],
   server: {
-    port: 8788,
+    port: appPort,
     proxy: {
-      "/api": "http://localhost:8787",
-      "/docs": "http://localhost:8787",
+      "/api": apiTarget,
+      "/docs": apiTarget,
     },
   },
   resolve: {
