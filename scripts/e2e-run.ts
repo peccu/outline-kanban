@@ -11,6 +11,7 @@ import { readdirSync } from "node:fs";
 
 const TEST_API_PORT = 8789;
 const TEST_APP_PORT = 8790;
+const TEST_PREVIEW_PORT = 8791;
 const TEST_DB = "outline-kanban-test.sqlite";
 
 const root = resolve(import.meta.dir, "..");
@@ -33,6 +34,12 @@ async function waitForReady(url: string, timeoutMs = 30_000) {
   }
   throw new Error(`Timed out waiting for ${url}`);
 }
+
+const suites = process.argv.slice(2).length ? process.argv.slice(2) : discoverSuites();
+// e2e-pwa needs a production build (main.ts only registers the SW when
+// import.meta.env.PROD), so spin up `vite preview` alongside dev when it's
+// requested.
+const needsPreview = suites.includes("e2e-pwa");
 
 const apiServer = Bun.spawn(["bun", "run", "server/index.ts"], {
   cwd: root,
@@ -60,25 +67,59 @@ const viteServer = Bun.spawn(
   }
 );
 
+let previewServer: ReturnType<typeof Bun.spawn> | null = null;
+
 function cleanup() {
   apiServer.kill();
   viteServer.kill();
+  previewServer?.kill();
 }
 process.on("exit", cleanup);
 process.on("SIGINT", () => process.exit(1));
 process.on("SIGTERM", () => process.exit(1));
 
-console.log(`[e2e-run] API  → http://localhost:${TEST_API_PORT}  (DB: ${TEST_DB})`);
-console.log(`[e2e-run] App  → http://localhost:${TEST_APP_PORT}`);
+if (needsPreview) {
+  console.log("[e2e-run] building client for preview (e2e-pwa)...");
+  const build = Bun.spawn(
+    ["bunx", "vite", "build", "--config", "client/vite.config.ts"],
+    { cwd: root, stdout: "inherit", stderr: "inherit" },
+  );
+  if ((await build.exited) !== 0) {
+    cleanup();
+    throw new Error("vite build failed");
+  }
+  previewServer = Bun.spawn(
+    [
+      "bunx",
+      "vite",
+      "preview",
+      "--config",
+      "client/vite.config.ts",
+      "--port",
+      String(TEST_PREVIEW_PORT),
+      "--strictPort",
+    ],
+    { cwd: root, stdout: "pipe", stderr: "pipe" },
+  );
+}
+
+console.log(`[e2e-run] API     → http://localhost:${TEST_API_PORT}  (DB: ${TEST_DB})`);
+console.log(`[e2e-run] App     → http://localhost:${TEST_APP_PORT}`);
+if (needsPreview) {
+  console.log(`[e2e-run] Preview → http://localhost:${TEST_PREVIEW_PORT}`);
+}
 console.log("[e2e-run] waiting for servers to be ready...");
 
-await Promise.all([
+const ready: Promise<void>[] = [
   waitForReady(`http://localhost:${TEST_API_PORT}/api/lanes`),
   waitForReady(`http://localhost:${TEST_APP_PORT}`),
-]);
+];
+if (needsPreview) {
+  ready.push(waitForReady(`http://localhost:${TEST_PREVIEW_PORT}`));
+}
+await Promise.all(ready);
 console.log("[e2e-run] servers ready\n");
 
-const suites = process.argv.slice(2).length ? process.argv.slice(2) : discoverSuites();
 console.log(`[e2e-run] suites: ${suites.join(", ")}\n`);
 
 const results: { name: string; code: number }[] = [];
@@ -92,6 +133,9 @@ for (const name of suites) {
       ...process.env,
       APP_URL: `http://localhost:${TEST_APP_PORT}`,
       API_URL: `http://localhost:${TEST_API_PORT}`,
+      ...(needsPreview
+        ? { BASE_URL: `http://localhost:${TEST_PREVIEW_PORT}` }
+        : {}),
     },
     stdout: "inherit",
     stderr: "inherit",
