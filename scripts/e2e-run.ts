@@ -34,7 +34,7 @@ async function waitForReady(url: string, timeoutMs = 30_000) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
-const apiServer = Bun.spawn(["bun", "run", "--watch=false", "server/index.ts"], {
+const apiServer = Bun.spawn(["bun", "run", "server/index.ts"], {
   cwd: root,
   env: {
     ...process.env,
