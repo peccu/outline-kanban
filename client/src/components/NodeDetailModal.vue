@@ -13,18 +13,76 @@ import {
   useLanes,
   useMoveNode,
   useNode,
+  useNodes,
   useTags,
   useUpdateNode,
 } from "@/api/queries";
+import { api } from "@/api/client";
 
 const props = defineProps<{
   nodeId: string;
 }>();
 const emit = defineEmits<{ close: [] }>();
 
-const idRef = computed(() => props.nodeId);
+// The modal drills into subtasks in place: `currentId` is the node currently
+// shown. It starts at the opened node and changes as the user navigates the
+// breadcrumb / subtask list, without unmounting the modal.
+const currentId = ref(props.nodeId);
+watch(
+  () => props.nodeId,
+  (v) => {
+    currentId.value = v;
+  },
+);
+const idRef = currentId;
 const { data: node, isPending: nodeLoading } = useNode(idRef);
 const { data: comments, isPending: commentsLoading } = useComments(idRef);
+
+// Direct children for the subtask list.
+const childrenQuery = useNodes(() => ({ parentId: currentId.value }));
+const subtasks = computed(() => childrenQuery.data.value ?? []);
+
+// Breadcrumb: the ancestor chain from the root down to the current node.
+const crumbs = ref<{ id: string; title: string }[]>([]);
+async function fetchNodeById(id: string) {
+  const res = await api.GET("/api/nodes/{id}", { params: { path: { id } } });
+  return res.data;
+}
+async function rebuildCrumbs() {
+  const chain: { id: string; title: string }[] = [];
+  let id: string | null = currentId.value;
+  let guard = 0;
+  while (id && guard++ < 100) {
+    const n = await fetchNodeById(id);
+    if (!n) break;
+    chain.unshift({ id: n.id, title: n.title || "(untitled)" });
+    id = n.parentId;
+  }
+  crumbs.value = chain;
+}
+
+function drillInto(id: string) {
+  if (id === currentId.value) return;
+  currentId.value = id;
+}
+
+// Breadcrumbs can get long; collapse the middle into an ellipsis that lists the
+// hidden ancestors in its tooltip. Always keep the root and the last two.
+type Crumb = { id: string; title: string; ellipsis?: boolean; hidden?: string };
+const displayCrumbs = computed<Crumb[]>(() => {
+  const c = crumbs.value;
+  if (c.length <= 4) return c;
+  const hidden = c.slice(1, c.length - 2).map((x) => x.title).join(" › ");
+  return [c[0]!, { id: "", title: "…", ellipsis: true, hidden }, c[c.length - 2]!, c[c.length - 1]!];
+});
+
+// Reset per-node local state whenever we navigate to a different node.
+watch(currentId, () => {
+  bodyEditingPrimed = false;
+  titleEditing.value = false;
+  newComment.value = "";
+  void rebuildCrumbs();
+});
 
 const update = useUpdateNode();
 const add = useAddComment();
@@ -298,7 +356,7 @@ function scheduleBodyAutosave() {
 async function postComment() {
   const text = newComment.value.trim();
   if (!text) return;
-  await add.mutateAsync({ nodeId: props.nodeId, bodyMd: text });
+  await add.mutateAsync({ nodeId: currentId.value, bodyMd: text });
   newComment.value = "";
 }
 
@@ -376,6 +434,7 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  void rebuildCrumbs();
   previousFocus = document.activeElement as HTMLElement | null;
   document.addEventListener("keydown", onKeyDown);
   document.body.style.overflow = "hidden";
@@ -413,7 +472,40 @@ onBeforeUnmount(() => {
           class="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-800 px-4 py-3"
         >
           <div class="min-w-0 flex-1">
+            <nav
+              v-if="displayCrumbs.length > 1"
+              class="flex flex-wrap items-center gap-0.5 text-xs text-neutral-500"
+              aria-label="breadcrumb"
+            >
+              <template v-for="(crumb, i) in displayCrumbs" :key="crumb.id || `e${i}`">
+                <span v-if="i > 0" class="text-neutral-700">›</span>
+                <span
+                  v-if="crumb.ellipsis"
+                  class="px-0.5"
+                  :title="crumb.hidden"
+                >
+                  …
+                </span>
+                <span
+                  v-else-if="i === displayCrumbs.length - 1"
+                  class="max-w-[12rem] truncate px-0.5 text-neutral-300"
+                  :title="crumb.title"
+                >
+                  {{ crumb.title }}
+                </span>
+                <button
+                  v-else
+                  type="button"
+                  class="max-w-[10rem] truncate rounded px-0.5 hover:text-neutral-200 hover:underline"
+                  :title="crumb.title"
+                  @click="drillInto(crumb.id)"
+                >
+                  {{ crumb.title }}
+                </button>
+              </template>
+            </nav>
             <div
+              v-else
               class="text-xs uppercase tracking-wide text-neutral-500"
             >
               card
@@ -622,6 +714,37 @@ onBeforeUnmount(() => {
                 double-click or Enter to edit
               </template>
             </div>
+          </section>
+
+          <section>
+            <h3
+              class="mb-1.5 text-xs font-medium uppercase tracking-wide text-neutral-400"
+            >
+              subtasks
+              <span class="text-neutral-600">({{ subtasks.length }})</span>
+            </h3>
+            <ul v-if="subtasks.length" class="flex flex-col gap-1">
+              <li v-for="s in subtasks" :key="s.id">
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 rounded border border-neutral-900 px-2 py-1.5 text-left text-sm text-neutral-200 transition-colors hover:border-neutral-700 hover:bg-neutral-900/60"
+                  @click="drillInto(s.id)"
+                >
+                  <span class="min-w-0 flex-1 truncate">
+                    {{ s.title || "(untitled)" }}
+                  </span>
+                  <span
+                    v-if="s.commentCount"
+                    class="shrink-0 text-[10px] text-neutral-500"
+                    :title="`${s.commentCount} comment(s)`"
+                  >
+                    💬 {{ s.commentCount }}
+                  </span>
+                  <span class="shrink-0 text-neutral-600">›</span>
+                </button>
+              </li>
+            </ul>
+            <p v-else class="text-xs text-neutral-600">no subtasks</p>
           </section>
 
           <section>
