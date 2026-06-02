@@ -3,7 +3,15 @@ import { ref } from "vue";
 import KanbanBoard from "@/components/KanbanBoard.vue";
 import TagManager from "@/components/TagManager.vue";
 import BackupRestore from "@/components/BackupRestore.vue";
+import BulkActionModal from "@/components/BulkActionModal.vue";
 import { isFiltering, selectedTagCount } from "@/components/tag-filter";
+import {
+  clearSelection,
+  hasSelection,
+  isBulkPanelOpen,
+  openBulkPanel,
+  selectionCount,
+} from "@/components/multi-select";
 
 const tagManagerOpen = ref(false);
 </script>
@@ -16,7 +24,7 @@ const tagManagerOpen = ref(false);
       <h1 class="text-lg font-semibold tracking-tight">outline-kanban</h1>
       <div class="flex items-center gap-3 text-xs text-neutral-500">
         <span class="font-mono">
-          ↑↓←→ nav · Enter / dbl-click edit · o open · Tab fold · M-Enter sibling · Tab cycle · M-←→ indent · Shift+←→ move lane
+          ↑↓←→ nav · Enter / dbl-click edit · o open · Tab fold · Space/m select · M-Enter sibling/bulk · Tab cycle · M-←→ indent · Shift+←→ move lane
         </span>
         <button
           type="button"
@@ -30,6 +38,23 @@ const tagManagerOpen = ref(false);
         >
           tags<span v-if="isFiltering"> · {{ selectedTagCount }}</span>
         </button>
+        <template v-if="hasSelection">
+          <button
+            type="button"
+            class="rounded border border-sky-600 bg-sky-500/15 px-2 py-0.5 text-sky-300 hover:bg-sky-500/25"
+            title="Edit selected cards (M-Enter)"
+            @click="openBulkPanel"
+          >
+            edit {{ selectionCount }} selected
+          </button>
+          <button
+            type="button"
+            class="rounded border border-neutral-800 px-2 py-0.5 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200"
+            @click="clearSelection"
+          >
+            clear
+          </button>
+        </template>
         <BackupRestore />
         <a
           href="/docs"
@@ -45,5 +70,6 @@ const tagManagerOpen = ref(false);
       <KanbanBoard />
     </main>
     <TagManager v-if="tagManagerOpen" @close="tagManagerOpen = false" />
+    <BulkActionModal v-if="isBulkPanelOpen" />
   </div>
 </template>

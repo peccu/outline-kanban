@@ -9,6 +9,12 @@ import { clearDropTarget, isDropBefore } from "./drop-state";
 import { isNodeCollapsed, toggleNodeCollapsed } from "./collapsed-nodes";
 import { tagFilterVisibleKey } from "./tag-filter";
 import {
+  hasSelection,
+  isNodeSelected,
+  openBulkPanel,
+  toggleSelected,
+} from "./multi-select";
+import {
   advanceCycle,
   getCycle,
   resetCycle,
@@ -345,6 +351,7 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 const modalOpen = ref(false);
 const hasDescription = computed(() => !!(props.node.bodyMd ?? "").trim());
 const commentCount = computed(() => props.node.commentCount ?? 0);
+const selected = computed(() => isNodeSelected(props.node.id));
 
 // A subtask can "belong" to a lane different from where it's displayed (under
 // its parent). Surface that as a chip; roots already live in their own column.
@@ -445,6 +452,13 @@ async function onCardKeydown(e: KeyboardEvent) {
     return;
   }
 
+  // Space / m → toggle this card's multi-select membership.
+  if ((key === " " || key === "Spacebar" || key === "m") && !mod && !e.shiftKey && !e.ctrlKey) {
+    e.preventDefault();
+    toggleSelected(props.node.id);
+    return;
+  }
+
   // Tab → fold / unfold subtasks (org-mode style). Only meaningful when the
   // node actually has children; otherwise let the browser handle Tab so focus
   // can leave the board normally.
@@ -461,10 +475,12 @@ async function onCardKeydown(e: KeyboardEvent) {
     return;
   }
 
-  // M-Enter from card focus also creates a sibling.
+  // M-Enter opens the bulk-edit panel when cards are selected; otherwise it
+  // creates a sibling as usual.
   if (key === "Enter" && mod) {
     e.preventDefault();
-    await onModEnter();
+    if (hasSelection.value) openBulkPanel();
+    else await onModEnter();
     return;
   }
 
@@ -566,7 +582,9 @@ onBeforeUnmount(() => {
       :class="[
         dragging ? 'opacity-40' : '',
         editing ? 'cursor-text border-neutral-500 bg-neutral-900/70 ring-1 ring-neutral-500' : '',
+        selected ? 'border-sky-500/70 bg-sky-500/10 ring-1 ring-sky-500/60' : '',
       ]"
+      :data-selected="selected ? '' : null"
       :style="{ marginLeft: `${depth * 18}px` }"
       @keydown="onCardKeydown"
       @click="onCardClick"

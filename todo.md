@@ -105,7 +105,7 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 **注意**: mention 表示と保存値の整合に注意。
 **テスト**: `e2e-tag-strip-title`
 
-### ⬜ T15. 複数カード同時編集（マルチセレクト・Emacs 風）
+### ✅ T15. 複数カード同時編集（マルチセレクト・Emacs 風）
 **方針**: 選択モードに入る → カードフォーカス移動 → Space または `m` で選択トグル →
 `M-Enter` で一括操作パネル（まとめてタグ付け / まとめてレーン移動）。全てキーボード操作可能。
 グローバル selection ストア（`multi-select.ts`）。カードに選択ハイライト。
@@ -147,4 +147,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-03: **T10 完了** — NodeUpdate に laneId 追加（型再生成）。子は move でなく PATCH で laneId のみ更新し親直下に留まる。カードに所属レーンチップ表示。DnD で子を他レーンにドロップ→ラベルのみ変更。detail のレーンセレクタも子に対応（T6 補完）。e2e-child-lane-label PASS。
 - 2026-06-03: **T9 完了** — detail が内部で currentId を保持しドリルダウン可能に。subtasks セクション（子一覧・件数・💬）、クリックでその子を開く。ヘッダーにパンくず（祖先チェーン、長い場合は中間を … に畳む＋tooltip）。e2e-detail-children PASS。
 - 2026-06-03: **T1 完了** — fflate 導入。GET /api/backup が data.json + attachments/<id> を ZIP 化、POST /api/restore で全置換（FK off + トランザクション、添付バイナリも復元）。ヘッダーに backup/restore UI（BackupRestore.vue）。e2e-backup PASS（添付往復含む）。
+- 2026-06-03: **T15 完了** — multi-select.ts ストア。カードで Space/m 選択トグル（青ハイライト）、選択ありで M-Enter → BulkActionModal（一括タグ付け／一括レーン移動、子は laneId のみ）。ヘッダーに選択数＋edit/clear。e2e-multi-select PASS。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。
