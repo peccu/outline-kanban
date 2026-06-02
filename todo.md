@@ -19,12 +19,12 @@
 **対象**: `client/src/components/OutlinerEditor.vue`
 **テスト**: `e2e-card-input`（連続入力で全文字が残ることを検証）
 
-### ⬜ T8. detail コメント編集欄の高さが狭い（trivial）
+### ✅ T8. detail コメント編集欄の高さが狭い（trivial）
 **方針**: コメント textarea の `min-h` を拡大 + 説明欄と高さ感を揃える。
 **対象**: `NodeDetailModal.vue`
 **テスト**: 型チェックのみ（CSS）
 
-### ⬜ T5. detail でタイトルの次は description にフォーカス
+### ✅ T5. detail でタイトルの次は description にフォーカス
 **方針**: タイトル編集中に Enter 確定したら description 編集にフォーカス遷移。
 初期フォーカスは現状 description で OK。
 **対象**: `NodeDetailModal.vue`
@@ -83,6 +83,37 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 **ZIP**: サーバ側で軽量 zip 生成（依存: `fflate` など）。
 **テスト**: `e2e-backup`（ダウンロード→リストアで往復）
 
+### ⬜ T12. カードにコメントマーク＋件数
+**方針**: description マーク(¶)同様、コメントがあればカードに 💬 アイコン＋件数を表示。
+ノード一覧 API がコメント件数を返さないので、`commentCount` を Node に含めるか、
+カードで `useComments` は重い→ サーバの nodes 一覧に `commentCount` を追加するのが軽量。
+**対象**: `server`(nodes 一覧に commentCount), `schemas.ts`, `NodeRow.vue`
+**テスト**: `e2e-comment-badge`
+
+### ⬜ T13. detail タイトルをキーボードだけで保存して blur
+**症状**: タイトルを Enter で編集モードにした後、キーボードのみで保存＆編集解除する手段がない。
+**方針**: タイトル編集中の Escape を「保存して view モードへ戻す（タイトルコンテナにフォーカス）」に。
+（T5 で Enter は description へ移動。Escape は保存して留まる/抜ける）。リトライ付きフォーカスで確実に。
+**対象**: `NodeDetailModal.vue`
+**テスト**: `e2e-detail-focus` に追記
+
+### ⬜ T14. タグ付与後はタイトルから #tag を消す
+**方針**: タグは nodeTags に別途保存される。保存するタイトル文字列からは mention(#label) を除去し、
+タグはピルでのみ表示。エディタ serializeToText でタイトル保存時に mention を空文字化（または attach 後に除去）。
+リロード後はタイトルに #tag が残らず、ピルのみ表示。
+**対象**: `OutlinerEditor.vue`(serialize), `NodeRow.vue`/`NodeDetailModal.vue`(保存値)
+**注意**: mention 表示と保存値の整合に注意。
+**テスト**: `e2e-tag-strip-title`
+
+### ⬜ T15. 複数カード同時編集（マルチセレクト・Emacs 風）
+**方針**: 選択モードに入る → カードフォーカス移動 → Space または `m` で選択トグル →
+`M-Enter` で一括操作パネル（まとめてタグ付け / まとめてレーン移動）。全てキーボード操作可能。
+グローバル selection ストア（`multi-select.ts`）。カードに選択ハイライト。
+一括操作はクライアントで複数 mutation を発行。
+**対象**: 新規 `multi-select.ts`, `NodeRow.vue`, 新規 `BulkActionBar.vue`/`BulkActionModal.vue`, `KanbanBoard.vue`
+**テスト**: `e2e-multi-select`
+**注意**: 最大級。最後に実施。
+
 ### ⬜ T11. レーンアイコンの色変更
 **方針**: レーンには既に `color` フィールドと `useUpdateLane` がある。ヘッダーのレーンメニュー
 （`LaneHeader.vue` の `…`）にカラーピッカーを追加し、`TagPill` と同様のプリセット色から選択。
@@ -98,3 +129,8 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
   保存往復/高速入力時の v-model レースによるカーソルリセット・文字落ちを防止。`e2e-card-input` 追加
   （入力保持＋リロード永続化を検証、PASS）。※ レース自体は localhost では決定的再現が難しく、本 e2e は
   サニティ＋粗い回帰検知という位置づけ。
+- 2026-06-02: **T8 完了** — コメント textarea を min-h 8rem に拡大。
+- 2026-06-02: **T5 完了** — タイトル Enter 確定で description 編集へフォーカス移動（リトライ付きフォーカスで
+  ProseMirror のフォーカス奪取を回避）。`e2e-detail-focus` 追加（T5+T8、PASS）。
+- 2026-06-02: 追加タスク受領: T12(コメントマーク), T13(タイトルをキーボードで保存blur), T14(タグ付与後タイトルから#tag除去),
+  T15(複数カード同時編集), T11(レーン色)。計 15 タスク。

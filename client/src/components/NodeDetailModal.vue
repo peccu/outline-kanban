@@ -104,6 +104,26 @@ function flushTitleSave() {
 function onTitleEnter() {
   flushTitleSave();
   titleEditing.value = false;
+  // Mirror org-mode / form flow: confirming the title moves the user straight
+  // into the description so they can keep typing without reaching for the mouse.
+  // ProseMirror clings to DOM focus across the editable→false transition and
+  // can reclaim it after a single focus() call, so blur it and retry focusing
+  // the textarea over a few frames (same approach as focus-bus).
+  titleEditorRef.value?.blur();
+  bodyEditing.value = true;
+  focusBodyTextareaSoon();
+}
+
+function focusBodyTextareaSoon(attempt = 0) {
+  const delays = [0, 16, 50, 150];
+  const ta = bodyTextarea.value;
+  if (ta) {
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+  }
+  if (attempt < delays.length - 1) {
+    window.setTimeout(() => focusBodyTextareaSoon(attempt + 1), delays[attempt + 1]);
+  }
 }
 function onTitleEscape() {
   flushTitleSave();
@@ -468,7 +488,7 @@ onBeforeUnmount(() => {
               <textarea
                 ref="newCommentTextarea"
                 v-model="newComment"
-                class="min-h-[4rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
+                class="min-h-[8rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
                 placeholder="add a comment…"
                 @keydown.meta.enter.prevent="postComment"
                 @keydown.ctrl.enter.prevent="postComment"
