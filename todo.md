@@ -29,7 +29,7 @@
 初期フォーカスは現状 description で OK。
 **対象**: `NodeDetailModal.vue`
 
-### ⬜ T7. detail でタグ付け外し UI
+### ✅ T7. detail でタグ付け外し UI
 **方針**: status/lane セクション付近に「tags」セクションを追加。
 既存タグの一覧から付与（`useTags`）、付与済みは × で外す（`useDetachTag`）、
 新規名入力で作成付与（`useAttachTag` name）。
@@ -136,3 +136,4 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
   エディタ内 Escape は伝播停止し、モーダルを閉じない。body textarea の Escape も同様に編集のみ抜けるよう統一。e2e-detail-focus PASS。
 - 2026-06-02: 追加タスク受領: T12(コメントマーク), T13(タイトルをキーボードで保存blur), T14(タグ付与後タイトルから#tag除去),
   T15(複数カード同時編集), T11(レーン色)。計 15 タスク。
+- 2026-06-02: **T7 完了** — detail に tags セクション追加（付与済みは ✕ で外す、入力で既存候補からの付与＋新規作成）。e2e-detail-tags PASS。

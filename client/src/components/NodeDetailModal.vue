@@ -11,6 +11,7 @@ import {
   useComments,
   useDetachTag,
   useNode,
+  useTags,
   useUpdateNode,
 } from "@/api/queries";
 import type { NodeStatus } from "@/api/client";
@@ -174,6 +175,63 @@ function onTagRemoved(t: { id: string | null; label: string }) {
   }
   if (!tagId) return;
   detach.mutate({ nodeId: node.value.id, tagId });
+}
+
+// ---- explicit tag attach / detach UI ----
+const { data: allTags } = useTags();
+const tagInput = ref("");
+const attachedTagIds = computed(
+  () => new Set((node.value?.tags ?? []).map((t) => t.id)),
+);
+// Tags that exist but aren't attached yet, filtered by the current input.
+const tagSuggestions = computed(() => {
+  const q = tagInput.value.trim().replace(/^#/, "").toLowerCase();
+  return (allTags.value ?? [])
+    .filter((t) => !attachedTagIds.value.has(t.id))
+    .filter((t) => (q ? t.name.toLowerCase().includes(q) : true))
+    .slice(0, 8);
+});
+const canCreateTag = computed(() => {
+  const name = tagInput.value.trim().replace(/^#/, "");
+  if (!name) return false;
+  return !(allTags.value ?? []).some(
+    (t) => t.name.toLowerCase() === name.toLowerCase(),
+  );
+});
+
+function attachExisting(tagId: string) {
+  if (!node.value) return;
+  attach.mutate({ nodeId: node.value.id, tag: { tagId } });
+  tagInput.value = "";
+}
+function attachByName(name: string) {
+  if (!node.value) return;
+  const clean = name.trim().replace(/^#/, "");
+  if (!clean) return;
+  attach.mutate({ nodeId: node.value.id, tag: { name: clean } });
+  tagInput.value = "";
+}
+function removeTag(tagId: string) {
+  if (!node.value) return;
+  detach.mutate({ nodeId: node.value.id, tagId });
+}
+function onTagInputEnter() {
+  // Prefer an exact existing match, else the first suggestion, else create.
+  const clean = tagInput.value.trim().replace(/^#/, "");
+  if (!clean) return;
+  const exact = (allTags.value ?? []).find(
+    (t) => t.name.toLowerCase() === clean.toLowerCase(),
+  );
+  if (exact) {
+    if (!attachedTagIds.value.has(exact.id)) attachExisting(exact.id);
+    else tagInput.value = "";
+    return;
+  }
+  if (tagSuggestions.value[0]) {
+    attachExisting(tagSuggestions.value[0].id);
+    return;
+  }
+  attachByName(clean);
 }
 
 const newComment = ref("");
@@ -439,6 +497,70 @@ onBeforeUnmount(() => {
                 />
                 {{ STATUS_LABEL[s] }}
               </button>
+            </div>
+          </section>
+
+          <section>
+            <h3
+              class="mb-1.5 text-xs font-medium uppercase tracking-wide text-neutral-400"
+            >
+              tags
+            </h3>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span
+                v-for="t in node?.tags ?? []"
+                :key="t.id"
+                class="inline-flex items-center gap-1"
+              >
+                <TagPill :tag="t" editable />
+                <button
+                  type="button"
+                  class="rounded text-neutral-500 hover:text-rose-400"
+                  :aria-label="`remove tag ${t.name}`"
+                  :title="`remove #${t.name}`"
+                  @click="removeTag(t.id)"
+                >
+                  ✕
+                </button>
+              </span>
+              <span
+                v-if="!(node?.tags && node.tags.length)"
+                class="text-xs text-neutral-600"
+              >
+                no tags yet
+              </span>
+            </div>
+            <div class="relative mt-2">
+              <input
+                v-model="tagInput"
+                type="text"
+                placeholder="add a tag… (Enter to attach / create)"
+                class="w-full rounded border border-neutral-800 bg-neutral-900/60 px-2 py-1 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-emerald-500/70 focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
+                @keydown.enter.prevent="onTagInputEnter"
+              />
+              <ul
+                v-if="tagSuggestions.length || canCreateTag"
+                class="mt-1 flex flex-wrap gap-1"
+              >
+                <li v-for="s in tagSuggestions" :key="s.id">
+                  <button
+                    type="button"
+                    class="rounded border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300 hover:border-neutral-600 hover:bg-neutral-900"
+                    @click="attachExisting(s.id)"
+                  >
+                    #{{ s.name }}
+                  </button>
+                </li>
+                <li v-if="canCreateTag">
+                  <button
+                    type="button"
+                    class="rounded border border-emerald-700/60 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300 hover:bg-emerald-500/10"
+                    @click="attachByName(tagInput)"
+                  >
+                    + create #{{ tagInput.trim().replace(/^#/, "") }}
+                  </button>
+                </li>
+              </ul>
             </div>
           </section>
 
