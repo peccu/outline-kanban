@@ -188,13 +188,15 @@ watch(
 watch(
   () => props.modelValue,
   (val) => {
-    // While the editor is focused the user's local content is the source of
-    // truth. A save round-trip invalidates the node queries and feeds the
-    // (possibly stale) server value back through here; calling setContent in
-    // that window resets the cursor and drops characters typed in the
-    // meantime (the "kanban eats a character" bug). Re-sync only once focus
-    // has left — by then scheduleSave/flushSave has persisted the latest.
-    if (editor.isFocused) return;
+    // While the editor is focused *and already holds text*, the user's local
+    // content is the source of truth. A save round-trip invalidates the node
+    // queries and feeds the (possibly stale) server value back through here;
+    // calling setContent in that window resets the cursor and drops characters
+    // typed in the meantime (the "kanban eats a character" bug). We still allow
+    // it when the editor is empty so a title that arrives from the server just
+    // after the editor mounted (e.g. a freshly-indented row remounting before
+    // its save settled) gets populated. Re-sync fully once focus leaves.
+    if (editor.isFocused && editor.state.doc.textContent.length > 0) return;
     const current = serializeToText(editor.getJSON());
     if (val !== current) {
       editor.commands.setContent(serializeFromText(val), { emitUpdate: false });

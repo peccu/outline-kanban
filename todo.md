@@ -142,5 +142,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: **T11 完了** — レーンメニューにプリセット色スウォッチ＋reset を追加。ドット表示に反映、localStorage 不要（DB の lane.color）。e2e-lane-color PASS。
 - 2026-06-02: **T3 完了** — useDeleteTag 追加。ヘッダーに tags ボタン → TagManager.vue（一覧・色変更・削除、confirm 付き）。e2e-tag-delete PASS。
 - 2026-06-02: **T4 完了** — tag-filter.ts（OR 絞り込み・localStorage 永続化・祖先保持）。KanbanBoard が全ノードから可視 ID を算出し provide、OutlinePanel/NodeRow が非可視を非表示。TagManager に filter トグル＋clear、ヘッダーに有効インジケータ。e2e-tag-filter PASS。
-- 2026-06-02: ⚠ e2e-collapse-subtasks / e2e-card-focus がクリーン HEAD でも失敗（T4 以前の回帰）。次に切り分け修正。
+- 2026-06-02: 回帰修正2件: (1) T2 の focus-guard が空エディタへのサーバ遅延タイトルもブロックし、indent 直後の子カードが空表示になっていた → 「フォーカス中かつ非空のときのみ setContent をスキップ」に緩和（collapse 修正）。(2) T13 で body textarea の Escape に stopPropagation を足したため空 description で Escape してもモーダルが閉じない回帰 → body 側は元の「保存して閉じる」に戻す（タイトルのみ stopPropagation 維持）。e2e-collapse-subtasks/e2e-card-focus を resetData で堅牢化。全関連スイート PASS。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。

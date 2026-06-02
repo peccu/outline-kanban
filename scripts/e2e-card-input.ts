@@ -3,6 +3,17 @@
 import { chromium } from "playwright";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:8788";
+const API_URL = process.env.API_URL ?? "http://localhost:8787";
+
+async function resetData() {
+  const all = (await fetch(`${API_URL}/api/nodes`).then((r) => r.json())) as any[];
+  for (const n of all) {
+    if (n.parentId === null) {
+      await fetch(`${API_URL}/api/nodes/${n.id}`, { method: "DELETE" });
+    }
+  }
+}
+await resetData();
 
 const errors: string[] = [];
 const failures: string[] = [];

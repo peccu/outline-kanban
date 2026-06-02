@@ -275,9 +275,10 @@ function onBodyViewKeydown(e: KeyboardEvent) {
 
 function onBodyTextareaKeydown(e: KeyboardEvent) {
   if (e.key === "Escape") {
-    // Save & exit *edit* — don't let it bubble to the modal's close-on-Escape.
+    // Save, then let it bubble so the modal closes too — Escape from the body
+    // means "I'm done here". (The title editor keeps the modal open instead, so
+    // Enter→description→Esc is a quick save-and-close flow.)
     e.preventDefault();
-    e.stopPropagation();
     void saveBodyAndLeave();
   }
 }
