@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Lane } from "@/api/client";
 import { useDeleteLane, useUpdateLane } from "@/api/queries";
 import { hideLane } from "./hidden-lanes";
+import { TAG_COLOR_PRESETS } from "@/lib/tag-color";
 
 const props = defineProps<{ lane: Lane }>();
 const emit = defineEmits<{
@@ -90,6 +91,11 @@ function doHide() {
   hideLane(props.lane.id);
 }
 
+function setColor(color: string | null) {
+  if (color === (props.lane.color ?? null)) return;
+  update.mutate({ id: props.lane.id, patch: { color } });
+}
+
 function doDelete() {
   menuOpen.value = false;
   if (!confirm(`Delete lane "${props.lane.name}"? Cards in it become unassigned.`))
@@ -166,6 +172,39 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
         >
           hide
         </button>
+        <div class="border-t border-neutral-800 px-3 py-1.5">
+          <div class="mb-1 text-[10px] uppercase tracking-wide text-neutral-500">
+            color
+          </div>
+          <div class="flex flex-wrap items-center gap-1">
+            <button
+              v-for="preset in TAG_COLOR_PRESETS"
+              :key="preset.value"
+              type="button"
+              class="size-4 rounded-full border transition-transform hover:scale-110"
+              :style="{
+                backgroundColor: preset.value,
+                borderColor:
+                  (lane.color ?? '').toLowerCase() === preset.value.toLowerCase()
+                    ? '#fafafa'
+                    : 'transparent',
+              }"
+              :title="preset.name"
+              :aria-label="`set lane color ${preset.name}`"
+              @click.stop="setColor(preset.value)"
+            />
+            <button
+              v-if="lane.color"
+              type="button"
+              class="ml-1 rounded border border-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200"
+              title="reset to default"
+              aria-label="reset lane color"
+              @click.stop="setColor(null)"
+            >
+              reset
+            </button>
+          </div>
+        </div>
         <button
           type="button"
           class="block w-full border-t border-neutral-800 px-3 py-1.5 text-left text-rose-400 hover:bg-neutral-800"

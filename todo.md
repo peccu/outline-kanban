@@ -114,7 +114,7 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 **テスト**: `e2e-multi-select`
 **注意**: 最大級。最後に実施。
 
-### ⬜ T11. レーンアイコンの色変更
+### ✅ T11. レーンアイコンの色変更
 **方針**: レーンには既に `color` フィールドと `useUpdateLane` がある。ヘッダーのレーンメニュー
 （`LaneHeader.vue` の `…`）にカラーピッカーを追加し、`TagPill` と同様のプリセット色から選択。
 ドット表示に反映。
@@ -139,4 +139,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: **T7 完了** — detail に tags セクション追加（付与済みは ✕ で外す、入力で既存候補からの付与＋新規作成）。e2e-detail-tags PASS。
 - 2026-06-02: **T6 完了** — detail の status セクションを実レーン一覧の lane セレクタに置換。ルートノードは選択で当該レーンへ移動しカンバンに即反映。子は親レーン従属の旨を表示。e2e-detail-lane PASS。
 - 2026-06-02: **T14 完了** — `serializeToText` で mention をタイトルに書き戻さない。タグは node_tags（ピル）が正で、保存タイトルは #tag を含まない。e2e-tag-strip-title PASS。既存 e2e-tag-remove/e2e-tag-color も PASS で回帰なし。
+- 2026-06-02: **T11 完了** — レーンメニューにプリセット色スウォッチ＋reset を追加。ドット表示に反映、localStorage 不要（DB の lane.color）。e2e-lane-color PASS。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。
