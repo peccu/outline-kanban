@@ -58,7 +58,7 @@ AND/OR は OR（いずれか一致）を既定に。
 **対象**: `NodeDetailModal.vue`, `queries.ts`(useLanes 利用)
 **テスト**: `e2e-detail-lane`
 
-### ⬜ T10. 子/孫カードに別レーン所属マーク
+### ✅ T10. 子/孫カードに別レーン所属マーク
 **症状**: 子は親の場所に表示されるが、本来の所属レーンが分かるラベルが欲しい。
 子を DnD したら場所は親のまま、ラベル(所属レーン)が変わるイメージ。
 **方針**: 子ノードに `laneId` を持たせられるようにし（現状ルートのみ laneId）、
@@ -144,4 +144,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: **T4 完了** — tag-filter.ts（OR 絞り込み・localStorage 永続化・祖先保持）。KanbanBoard が全ノードから可視 ID を算出し provide、OutlinePanel/NodeRow が非可視を非表示。TagManager に filter トグル＋clear、ヘッダーに有効インジケータ。e2e-tag-filter PASS。
 - 2026-06-02: 回帰修正2件: (1) T2 の focus-guard が空エディタへのサーバ遅延タイトルもブロックし、indent 直後の子カードが空表示になっていた → 「フォーカス中かつ非空のときのみ setContent をスキップ」に緩和（collapse 修正）。(2) T13 で body textarea の Escape に stopPropagation を足したため空 description で Escape してもモーダルが閉じない回帰 → body 側は元の「保存して閉じる」に戻す（タイトルのみ stopPropagation 維持）。e2e-collapse-subtasks/e2e-card-focus を resetData で堅牢化。全関連スイート PASS。
 - 2026-06-03: **T12 完了** — nodes 一覧/取得に commentCount を追加（hydrateTags で集計）、クライアント型を再生成。カードに 💬+件数バッジ表示。コメント追加/削除で nodes を invalidate。e2e-comment-badge PASS。
+- 2026-06-03: **T10 完了** — NodeUpdate に laneId 追加（型再生成）。子は move でなく PATCH で laneId のみ更新し親直下に留まる。カードに所属レーンチップ表示。DnD で子を他レーンにドロップ→ラベルのみ変更。detail のレーンセレクタも子に対応（T6 補完）。e2e-child-lane-label PASS。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。

@@ -1148,6 +1148,7 @@ export interface components {
             title?: string;
             bodyMd?: string;
             status?: components["schemas"]["NodeStatus"];
+            laneId?: string | null;
         };
         NodeMove: {
             parentId: string | null;

@@ -311,13 +311,18 @@ const { data: lanes } = useLanes();
 const move = useMoveNode();
 const isRootNode = computed(() => node.value?.parentId == null);
 
-function moveToLane(laneId: string) {
-  if (!node.value || !isRootNode.value) return;
-  if (node.value.laneId === laneId) return;
-  move.mutate({
-    id: node.value.id,
-    move: { parentId: null, laneId, beforeId: null },
-  });
+function chooseLane(laneId: string) {
+  if (!node.value || node.value.laneId === laneId) return;
+  if (isRootNode.value) {
+    // Roots live in a lane column — actually move them there.
+    move.mutate({
+      id: node.value.id,
+      move: { parentId: null, laneId, beforeId: null },
+    });
+  } else {
+    // Subtasks stay under their parent; only relabel their lane membership.
+    update.mutate({ id: node.value.id, patch: { laneId } });
+  }
 }
 
 const modalRoot = ref<HTMLElement | null>(null);
@@ -479,7 +484,7 @@ onBeforeUnmount(() => {
                 lane
               </h3>
             </div>
-            <div v-if="isRootNode" class="flex flex-wrap gap-1.5">
+            <div class="flex flex-wrap gap-1.5">
               <button
                 v-for="l in lanes ?? []"
                 :key="l.id"
@@ -490,7 +495,7 @@ onBeforeUnmount(() => {
                     ? 'border-neutral-600 bg-neutral-800 text-neutral-100'
                     : 'border-neutral-800 text-neutral-400 hover:border-neutral-700'
                 "
-                @click="moveToLane(l.id)"
+                @click="chooseLane(l.id)"
               >
                 <span
                   class="inline-block size-2 rounded-full"
@@ -499,9 +504,9 @@ onBeforeUnmount(() => {
                 {{ l.name }}
               </button>
             </div>
-            <p v-else class="text-xs text-neutral-500">
-              Subtasks inherit their parent's lane (change it via the lane label
-              on the board).
+            <p v-if="!isRootNode" class="mt-1 text-[11px] text-neutral-500">
+              This is a subtask — choosing a lane only relabels it; it stays
+              under its parent.
             </p>
           </section>
 

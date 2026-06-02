@@ -101,6 +101,9 @@ export const NodeUpdate = z
     title: z.string().max(2000).optional(),
     bodyMd: z.string().optional(),
     status: NodeStatusSchema.optional(),
+    // Relabel a node's lane membership without moving it (keeps parent &
+    // position). Used for subtasks that "belong" to a different lane.
+    laneId: z.string().nullable().optional(),
   })
   .openapi("NodeUpdate");
 

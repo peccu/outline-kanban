@@ -8,6 +8,7 @@ import {
   useMoveNode,
   useNodes,
   useReorderLane,
+  useUpdateNode,
 } from "@/api/queries";
 import { computeVisibleIds, tagFilterVisibleKey } from "./tag-filter";
 import {
@@ -44,6 +45,7 @@ const _cleanup = computed(() => {
 void _cleanup;
 
 const moveMutation = useMoveNode();
+const updateMutation = useUpdateNode();
 const createLane = useCreateLane();
 const reorderLane = useReorderLane();
 const draggingLaneId = ref<string | null>(null);
@@ -201,6 +203,15 @@ function onDrop(e: DragEvent, laneId: string) {
   clearDropTarget();
   if (!nodeId) return;
   e.preventDefault();
+  // Subtasks stay under their parent: dropping one on a lane just relabels its
+  // lane membership (shown as a chip) rather than tearing it out to the root.
+  const dragged = (allNodesQuery.data.value ?? []).find((n) => n.id === nodeId);
+  if (dragged && dragged.parentId) {
+    if (dragged.laneId !== laneId) {
+      updateMutation.mutate({ id: nodeId, patch: { laneId } });
+    }
+    return;
+  }
   const beforeId =
     target && target.laneId === laneId ? target.beforeId : null;
   // Dropping right before yourself (or right after the previous sibling

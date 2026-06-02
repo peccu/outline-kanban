@@ -21,6 +21,7 @@ import {
   useDeleteNode,
   useDetachTag,
   useIndentNode,
+  useLanes,
   useMoveNode,
   useNodes,
   useOutdentNode,
@@ -344,6 +345,15 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 const modalOpen = ref(false);
 const hasDescription = computed(() => !!(props.node.bodyMd ?? "").trim());
 const commentCount = computed(() => props.node.commentCount ?? 0);
+
+// A subtask can "belong" to a lane different from where it's displayed (under
+// its parent). Surface that as a chip; roots already live in their own column.
+const lanesQuery = useLanes();
+const laneChip = computed(() => {
+  if (isRoot.value || !props.node.laneId) return null;
+  return (lanesQuery.data.value ?? []).find((l) => l.id === props.node.laneId)
+    ?? null;
+});
 const dragging = ref(false);
 
 function onDragStart(e: DragEvent) {
@@ -614,9 +624,20 @@ onBeforeUnmount(() => {
             @blur="onEditorBlur"
           />
           <div
-            v-if="(node.tags && node.tags.length > 0) || hasDescription || commentCount > 0"
+            v-if="(node.tags && node.tags.length > 0) || hasDescription || commentCount > 0 || laneChip"
             class="mt-1 flex flex-wrap items-center gap-1"
           >
+            <span
+              v-if="laneChip"
+              class="inline-flex items-center gap-1 rounded border border-neutral-700 px-1.5 py-0 text-[10px] text-neutral-300"
+              :title="`belongs to lane ${laneChip.name}`"
+            >
+              <span
+                class="inline-block size-1.5 rounded-full"
+                :style="{ background: laneChip.color ?? '#525252' }"
+              />
+              {{ laneChip.name }}
+            </span>
             <span
               v-if="hasDescription"
               class="rounded bg-neutral-800 px-1.5 py-0 text-[10px] text-neutral-300"
