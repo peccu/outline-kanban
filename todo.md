@@ -97,7 +97,7 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 **対象**: `NodeDetailModal.vue`
 **テスト**: `e2e-detail-focus` に追記
 
-### ⬜ T14. タグ付与後はタイトルから #tag を消す
+### ✅ T14. タグ付与後はタイトルから #tag を消す
 **方針**: タグは nodeTags に別途保存される。保存するタイトル文字列からは mention(#label) を除去し、
 タグはピルでのみ表示。エディタ serializeToText でタイトル保存時に mention を空文字化（または attach 後に除去）。
 リロード後はタイトルに #tag が残らず、ピルのみ表示。
@@ -138,4 +138,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
   T15(複数カード同時編集), T11(レーン色)。計 15 タスク。
 - 2026-06-02: **T7 完了** — detail に tags セクション追加（付与済みは ✕ で外す、入力で既存候補からの付与＋新規作成）。e2e-detail-tags PASS。
 - 2026-06-02: **T6 完了** — detail の status セクションを実レーン一覧の lane セレクタに置換。ルートノードは選択で当該レーンへ移動しカンバンに即反映。子は親レーン従属の旨を表示。e2e-detail-lane PASS。
+- 2026-06-02: **T14 完了** — `serializeToText` で mention をタイトルに書き戻さない。タグは node_tags（ピル）が正で、保存タイトルは #tag を含まない。e2e-tag-strip-title PASS。既存 e2e-tag-remove/e2e-tag-color も PASS で回帰なし。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。

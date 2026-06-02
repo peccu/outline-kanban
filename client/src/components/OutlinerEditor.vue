@@ -209,14 +209,15 @@ watch(
 );
 
 function serializeToText(doc: any): string {
-  // Custom serializer: text nodes verbatim, mentions as "#label".
+  // Custom serializer: text nodes verbatim. Mentions are *not* written back
+  // into the title — a tag's canonical home is the node_tags table (shown as a
+  // pill), so the persisted title stays clean rather than duplicating "#label"
+  // inline. The mention chip still shows in the editor until the row remounts.
   const paragraph = doc?.content?.[0];
   if (!paragraph?.content) return "";
   return paragraph.content
     .map((n: any) => {
       if (n.type === "text") return n.text ?? "";
-      if (n.type === "mention")
-        return `#${n.attrs?.label ?? n.attrs?.id ?? ""}`;
       return "";
     })
     .join("");
