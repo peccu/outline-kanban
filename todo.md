@@ -42,7 +42,7 @@
 **対象**: `queries.ts`, 新規 `TagManager.vue`, `App.vue`
 **テスト**: `e2e-tag-delete`
 
-### ⬜ T4. タグで絞り込み
+### ✅ T4. タグで絞り込み
 **方針**: 選択タグ集合のグローバルストア（`tag-filter.ts`, localStorage 永続化）。
 ヘッダー or タグ管理 UI でトグル。`OutlinePanel`/`NodeRow` で、選択タグを持たないルート/子を非表示。
 AND/OR は OR（いずれか一致）を既定に。
@@ -141,4 +141,6 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: **T14 完了** — `serializeToText` で mention をタイトルに書き戻さない。タグは node_tags（ピル）が正で、保存タイトルは #tag を含まない。e2e-tag-strip-title PASS。既存 e2e-tag-remove/e2e-tag-color も PASS で回帰なし。
 - 2026-06-02: **T11 完了** — レーンメニューにプリセット色スウォッチ＋reset を追加。ドット表示に反映、localStorage 不要（DB の lane.color）。e2e-lane-color PASS。
 - 2026-06-02: **T3 完了** — useDeleteTag 追加。ヘッダーに tags ボタン → TagManager.vue（一覧・色変更・削除、confirm 付き）。e2e-tag-delete PASS。
+- 2026-06-02: **T4 完了** — tag-filter.ts（OR 絞り込み・localStorage 永続化・祖先保持）。KanbanBoard が全ノードから可視 ID を算出し provide、OutlinePanel/NodeRow が非可視を非表示。TagManager に filter トグル＋clear、ヘッダーに有効インジケータ。e2e-tag-filter PASS。
+- 2026-06-02: ⚠ e2e-collapse-subtasks / e2e-card-focus がクリーン HEAD でも失敗（T4 以前の回帰）。次に切り分け修正。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。

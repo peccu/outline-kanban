@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import NodeRow from "./NodeRow.vue";
 import { useCreateNode, useNodes } from "@/api/queries";
 import { focusNode } from "./focus-bus";
 import { navigateFrom } from "./card-nav";
 import { isDropAtEndOf } from "./drop-state";
+import { tagFilterVisibleKey } from "./tag-filter";
+
+const tagFilterVisible = inject(
+  tagFilterVisibleKey,
+  computed(() => null),
+);
 
 const props = defineProps<{ laneId: string }>();
 
@@ -18,6 +24,12 @@ const filter = computed(() => ({
 }));
 const { data, isPending } = useNodes(filter);
 const nodes = computed(() => data.value ?? []);
+// Under an active tag filter, only show roots whose subtree contains a match.
+const visibleNodes = computed(() => {
+  const v = tagFilterVisible.value;
+  if (!v) return nodes.value;
+  return nodes.value.filter((n) => v.has(n.id));
+});
 
 const createNode = useCreateNode();
 const addBtn = ref<HTMLButtonElement | null>(null);
@@ -51,11 +63,11 @@ function onAddKeydown(e: KeyboardEvent) {
       loading…
     </div>
     <NodeRow
-      v-for="(node, i) in nodes"
+      v-for="node in visibleNodes"
       :key="node.id"
       :node="node"
       :siblings="nodes"
-      :index="i"
+      :index="nodes.indexOf(node)"
       :lane-id="laneId"
       :depth="0"
       @move-lane="(d, id) => emit('move-lane', d, id)"

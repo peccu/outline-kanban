@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, provide, ref, watch } from "vue";
 import LaneHeader from "./LaneHeader.vue";
 import OutlinePanel from "./OutlinePanel.vue";
 import {
   useCreateLane,
   useLanes,
   useMoveNode,
+  useNodes,
   useReorderLane,
 } from "@/api/queries";
+import { computeVisibleIds, tagFilterVisibleKey } from "./tag-filter";
 import {
   clearHidden,
   isLaneHidden,
@@ -26,6 +28,14 @@ import {
 
 const { data, isPending, isError, error } = useLanes();
 const allLanes = computed(() => data.value ?? []);
+
+// Tag filter: fetch every node once (shared/cached query) and derive the set
+// of ids to keep visible. Provided to the panels/rows which hide the rest.
+const allNodesQuery = useNodes(() => ({}));
+const tagFilterVisible = computed(() =>
+  computeVisibleIds(allNodesQuery.data.value ?? []),
+);
+provide(tagFilterVisibleKey, tagFilterVisible);
 
 const _cleanup = computed(() => {
   if (data.value) clearHidden(data.value.map((l) => l.id));

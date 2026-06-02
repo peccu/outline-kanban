@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import OutlinerEditor from "./OutlinerEditor.vue";
 import NodeDetailModal from "./NodeDetailModal.vue";
 import TagPill from "./TagPill.vue";
@@ -7,6 +7,7 @@ import { focusCard, navigateCard } from "./card-nav";
 import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
 import { clearDropTarget, isDropBefore } from "./drop-state";
 import { isNodeCollapsed, toggleNodeCollapsed } from "./collapsed-nodes";
+import { tagFilterVisibleKey } from "./tag-filter";
 import {
   advanceCycle,
   getCycle,
@@ -80,6 +81,21 @@ const childrenQuery = useNodes(
 );
 const children = computed(() => childrenQuery.data.value ?? []);
 const hasChildren = computed(() => children.value.length > 0);
+
+const tagFilterVisible = inject(
+  tagFilterVisibleKey,
+  computed(() => null),
+);
+// Children to actually render: none when collapsed; under a tag filter, only
+// those whose subtree contains a match (the visible-id set already includes
+// ancestors). The full `children` list is still passed as `siblings` so
+// indent / sibling-create keep working off the real ordering.
+const visibleChildren = computed(() => {
+  if (collapsed.value) return [];
+  const v = tagFilterVisible.value;
+  if (!v) return children.value;
+  return children.value.filter((c) => v.has(c.id));
+});
 
 // Org-mode style folding: when collapsed, the subtree is hidden behind a
 // "…" indicator. Persisted per node in localStorage via collapsed-nodes.
@@ -629,11 +645,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <NodeRow
-      v-for="(child, i) in (collapsed ? [] : children)"
+      v-for="child in visibleChildren"
       :key="child.id"
       :node="child"
       :siblings="children"
-      :index="i"
+      :index="children.indexOf(child)"
       :lane-id="laneId"
       :depth="depth + 1"
       @move-lane="(d, id) => emit('move-lane', d, id)"

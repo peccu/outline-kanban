@@ -2,6 +2,13 @@
 import { onBeforeUnmount, onMounted } from "vue";
 import TagPill from "./TagPill.vue";
 import { useDeleteTag, useTags } from "@/api/queries";
+import {
+  clearTagFilter,
+  isFiltering,
+  isTagSelected,
+  selectedTagCount,
+  toggleTagFilter,
+} from "./tag-filter";
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -36,14 +43,24 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
           <h2 class="text-sm font-semibold tracking-tight text-neutral-100">
             tags
           </h2>
-          <button
-            type="button"
-            class="rounded p-1 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300"
-            aria-label="close"
-            @click="emit('close')"
-          >
-            ✕
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="isFiltering"
+              type="button"
+              class="rounded border border-emerald-700/60 px-2 py-0.5 text-[11px] text-emerald-300 hover:bg-emerald-500/10"
+              @click="clearTagFilter"
+            >
+              clear filter ({{ selectedTagCount }})
+            </button>
+            <button
+              type="button"
+              class="rounded p-1 text-neutral-500 hover:bg-neutral-900 hover:text-neutral-300"
+              aria-label="close"
+              @click="emit('close')"
+            >
+              ✕
+            </button>
+          </div>
         </header>
 
         <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
@@ -55,14 +72,30 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown));
               class="flex items-center justify-between gap-2 rounded border border-neutral-900 px-2 py-1.5 hover:border-neutral-800"
             >
               <TagPill :tag="t" editable />
-              <button
-                type="button"
-                class="rounded border border-neutral-800 px-2 py-0.5 text-[11px] text-rose-400 hover:bg-rose-500/10"
-                :aria-label="`delete tag ${t.name}`"
-                @click="removeTag(t.id, t.name)"
-              >
-                delete
-              </button>
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="rounded border px-2 py-0.5 text-[11px] transition-colors"
+                  :class="
+                    isTagSelected(t.id)
+                      ? 'border-emerald-600 bg-emerald-500/15 text-emerald-300'
+                      : 'border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                  "
+                  :aria-pressed="isTagSelected(t.id)"
+                  :aria-label="`filter by tag ${t.name}`"
+                  @click="toggleTagFilter(t.id)"
+                >
+                  {{ isTagSelected(t.id) ? "filtering" : "filter" }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded border border-neutral-800 px-2 py-0.5 text-[11px] text-rose-400 hover:bg-rose-500/10"
+                  :aria-label="`delete tag ${t.name}`"
+                  @click="removeTag(t.id, t.name)"
+                >
+                  delete
+                </button>
+              </div>
             </li>
           </ul>
           <div v-else class="text-xs text-neutral-600">no tags yet</div>
