@@ -6,6 +6,7 @@ import TagPill from "./TagPill.vue";
 import { focusCard, navigateCard } from "./card-nav";
 import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
 import { clearDropTarget, isDropBefore } from "./drop-state";
+import { isNodeCollapsed, toggleNodeCollapsed } from "./collapsed-nodes";
 import {
   advanceCycle,
   getCycle,
@@ -78,6 +79,16 @@ const childrenQuery = useNodes(
   computed(() => ({ parentId: props.node.id })),
 );
 const children = computed(() => childrenQuery.data.value ?? []);
+const hasChildren = computed(() => children.value.length > 0);
+
+// Org-mode style folding: when collapsed, the subtree is hidden behind a
+// "…" indicator. Persisted per node in localStorage via collapsed-nodes.
+const collapsed = computed(() => isNodeCollapsed(props.node.id));
+
+function toggleCollapse() {
+  if (!hasChildren.value) return;
+  toggleNodeCollapsed(props.node.id);
+}
 
 const updateNode = useUpdateNode();
 const createNode = useCreateNode();
@@ -407,6 +418,15 @@ async function onCardKeydown(e: KeyboardEvent) {
     return;
   }
 
+  // Tab → fold / unfold subtasks (org-mode style). Only meaningful when the
+  // node actually has children; otherwise let the browser handle Tab so focus
+  // can leave the board normally.
+  if (key === "Tab" && !mod && !e.shiftKey && hasChildren.value) {
+    e.preventDefault();
+    toggleCollapse();
+    return;
+  }
+
   // Enter / F2 / e → edit mode
   if ((key === "Enter" && !mod && !e.shiftKey) || key === "F2" || key === "e") {
     e.preventDefault();
@@ -528,6 +548,33 @@ onBeforeUnmount(() => {
       @dragend="onDragEnd"
     >
       <div class="flex items-start gap-2 px-2 py-1.5">
+        <button
+          v-if="hasChildren"
+          type="button"
+          tabindex="-1"
+          draggable="false"
+          class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded text-neutral-500 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
+          :title="collapsed ? 'Expand subtasks (Tab)' : 'Collapse subtasks (Tab)'"
+          :aria-label="collapsed ? 'Expand subtasks' : 'Collapse subtasks'"
+          :aria-expanded="!collapsed"
+          @mousedown.stop
+          @click.stop="toggleCollapse"
+        >
+          <svg
+            viewBox="0 0 12 12"
+            class="h-3 w-3 transition-transform"
+            :class="collapsed ? '' : 'rotate-90'"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M4 2.5 8 6l-4 3.5z" />
+          </svg>
+        </button>
+        <span
+          v-else
+          aria-hidden="true"
+          class="mt-0.5 h-4 w-4 shrink-0"
+        />
         <div class="min-w-0 flex-1">
           <OutlinerEditor
             ref="editorRef"
@@ -566,11 +613,23 @@ onBeforeUnmount(() => {
               :tag="t"
             />
           </div>
+          <button
+            v-if="collapsed && hasChildren"
+            type="button"
+            tabindex="-1"
+            draggable="false"
+            class="mt-1 rounded bg-neutral-800 px-1.5 py-0 text-[10px] text-neutral-400 transition-colors hover:bg-neutral-700 hover:text-neutral-200"
+            :title="`Expand ${children.length} subtask(s) (Tab)`"
+            @mousedown.stop
+            @click.stop="toggleCollapse"
+          >
+            … {{ children.length }}
+          </button>
         </div>
       </div>
     </div>
     <NodeRow
-      v-for="(child, i) in children"
+      v-for="(child, i) in (collapsed ? [] : children)"
       :key="child.id"
       :node="child"
       :siblings="children"
