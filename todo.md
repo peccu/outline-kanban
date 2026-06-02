@@ -90,7 +90,7 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 **対象**: `server`(nodes 一覧に commentCount), `schemas.ts`, `NodeRow.vue`
 **テスト**: `e2e-comment-badge`
 
-### ⬜ T13. detail タイトルをキーボードだけで保存して blur
+### ✅ T13. detail タイトルをキーボードだけで保存して blur
 **症状**: タイトルを Enter で編集モードにした後、キーボードのみで保存＆編集解除する手段がない。
 **方針**: タイトル編集中の Escape を「保存して view モードへ戻す（タイトルコンテナにフォーカス）」に。
 （T5 で Enter は description へ移動。Escape は保存して留まる/抜ける）。リトライ付きフォーカスで確実に。
@@ -132,5 +132,7 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: **T8 完了** — コメント textarea を min-h 8rem に拡大。
 - 2026-06-02: **T5 完了** — タイトル Enter 確定で description 編集へフォーカス移動（リトライ付きフォーカスで
   ProseMirror のフォーカス奪取を回避）。`e2e-detail-focus` 追加（T5+T8、PASS）。
+- 2026-06-02: **T13 完了** — タイトル編集中の Escape を「保存して view モードへ戻す（タイトルコンテナにフォーカス）」に。
+  エディタ内 Escape は伝播停止し、モーダルを閉じない。body textarea の Escape も同様に編集のみ抜けるよう統一。e2e-detail-focus PASS。
 - 2026-06-02: 追加タスク受領: T12(コメントマーク), T13(タイトルをキーボードで保存blur), T14(タグ付与後タイトルから#tag除去),
   T15(複数カード同時編集), T11(レーン色)。計 15 タスク。

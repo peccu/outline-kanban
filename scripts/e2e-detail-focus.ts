@@ -77,6 +77,33 @@ check(
   `${commentMinH}px`,
 );
 
+// T13: re-enter title edit, then Escape to save & exit purely by keyboard.
+await titleBox.focus();
+await page.keyboard.press("Enter");
+await page.waitForTimeout(200);
+await page.keyboard.type(" more");
+await page.waitForTimeout(200);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(400);
+
+const afterEscape = await page.evaluate(() => {
+  const el = document.activeElement as HTMLElement | null;
+  return {
+    onContainer: el?.getAttribute("title") === "Enter or double-click to edit",
+    proseMirrorFocused: !!document.querySelector(".ProseMirror-focused"),
+  };
+});
+check("title Escape lands focus on the title container", afterEscape.onContainer);
+check("title editor no longer focused after Escape", !afterEscape.proseMirrorFocused);
+
+const savedTitle = (await fetch(`${API_URL}/api/nodes`).then((r) => r.json()))
+  .find?.((n: any) => n.title?.includes("focus test"))?.title;
+check(
+  "title saved after keyboard Escape",
+  savedTitle === "focus test edited more",
+  `got "${savedTitle}"`,
+);
+
 await page.screenshot({ path: "/tmp/detail-focus.png", fullPage: true });
 
 console.log(`\npage errors: ${errors.length}`);

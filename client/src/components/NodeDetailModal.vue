@@ -72,6 +72,7 @@ watch(
 
 const titleEditing = ref(false);
 const titleEditorRef = ref<InstanceType<typeof OutlinerEditor> | null>(null);
+const titleContainer = ref<HTMLElement | null>(null);
 
 function enterTitleEdit() {
   titleEditing.value = true;
@@ -126,8 +127,25 @@ function focusBodyTextareaSoon(attempt = 0) {
   }
 }
 function onTitleEscape() {
+  // Keyboard-only "save & exit edit": persist the title and drop back to view
+  // mode, landing focus on the title container so the user never has to reach
+  // for the mouse. ProseMirror reclaims DOM focus across the editable→false
+  // flip, so blur it and retry focusing the container over a few frames.
   flushTitleSave();
   titleEditing.value = false;
+  titleEditorRef.value?.blur();
+  focusTitleContainerSoon();
+}
+
+function focusTitleContainerSoon(attempt = 0) {
+  const delays = [0, 16, 50, 150];
+  titleContainer.value?.focus();
+  if (attempt < delays.length - 1) {
+    window.setTimeout(
+      () => focusTitleContainerSoon(attempt + 1),
+      delays[attempt + 1],
+    );
+  }
 }
 function onTitleBlur() {
   if (!titleEditing.value) return;
@@ -212,7 +230,9 @@ function onBodyViewKeydown(e: KeyboardEvent) {
 
 function onBodyTextareaKeydown(e: KeyboardEvent) {
   if (e.key === "Escape") {
+    // Save & exit *edit* — don't let it bubble to the modal's close-on-Escape.
     e.preventDefault();
+    e.stopPropagation();
     void saveBodyAndLeave();
   }
 }
@@ -335,6 +355,7 @@ onBeforeUnmount(() => {
               card
             </div>
             <div
+              ref="titleContainer"
               :tabindex="titleEditing ? -1 : 0"
               class="group/title flex items-center gap-2 rounded border border-transparent px-1.5 py-0.5 -mx-1.5 text-base font-medium text-neutral-100 outline-none transition-colors"
               :class="

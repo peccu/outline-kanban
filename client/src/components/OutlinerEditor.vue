@@ -92,6 +92,11 @@ const editor = new Editor({
         if (empty) return true; // swallow the repeat; nothing more to delete
       }
       if (event.key === "Escape") {
+        // Escape here means "leave the inline editor", not "close whatever is
+        // behind it". Stop it from bubbling to document-level handlers (e.g.
+        // the detail modal's close-on-Escape) so the user can exit title/body
+        // edit by keyboard without dismissing the modal.
+        event.stopPropagation();
         editor.commands.blur();
         emit("key-escape", event);
         return true;
