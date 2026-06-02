@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import KanbanBoard from "@/components/KanbanBoard.vue";
 import TagManager from "@/components/TagManager.vue";
+import BackupRestore from "@/components/BackupRestore.vue";
 import { isFiltering, selectedTagCount } from "@/components/tag-filter";
 
 const tagManagerOpen = ref(false);
@@ -29,6 +30,7 @@ const tagManagerOpen = ref(false);
         >
           tags<span v-if="isFiltering"> · {{ selectedTagCount }}</span>
         </button>
+        <BackupRestore />
         <a
           href="/docs"
           target="_blank"
