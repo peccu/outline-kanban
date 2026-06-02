@@ -343,6 +343,7 @@ function onTagRemoved(t: { id: string | null; label: string }) {
 
 const modalOpen = ref(false);
 const hasDescription = computed(() => !!(props.node.bodyMd ?? "").trim());
+const commentCount = computed(() => props.node.commentCount ?? 0);
 const dragging = ref(false);
 
 function onDragStart(e: DragEvent) {
@@ -613,7 +614,7 @@ onBeforeUnmount(() => {
             @blur="onEditorBlur"
           />
           <div
-            v-if="(node.tags && node.tags.length > 0) || hasDescription"
+            v-if="(node.tags && node.tags.length > 0) || hasDescription || commentCount > 0"
             class="mt-1 flex flex-wrap items-center gap-1"
           >
             <span
@@ -622,6 +623,13 @@ onBeforeUnmount(() => {
               title="has description"
             >
               ¶
+            </span>
+            <span
+              v-if="commentCount > 0"
+              class="rounded bg-neutral-800 px-1.5 py-0 text-[10px] text-neutral-300"
+              :title="`${commentCount} comment(s)`"
+            >
+              💬 {{ commentCount }}
             </span>
             <TagPill
               v-for="t in node.tags ?? []"

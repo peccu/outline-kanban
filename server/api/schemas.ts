@@ -77,6 +77,7 @@ export const NodeSchema = z
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
     tags: z.array(TagSchema).optional(),
+    commentCount: z.number().int().optional(),
   })
   .openapi("Node");
 

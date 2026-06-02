@@ -323,8 +323,12 @@ export function useAddComment() {
           body: { bodyMd: vars.bodyMd },
         }),
       ),
-    onSuccess: (_c, vars) =>
-      qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) }),
+    onSuccess: (_c, vars) => {
+      qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) });
+      // Refresh node listings so the card's comment-count badge updates.
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+      qc.invalidateQueries({ queryKey: qk.node(vars.nodeId) });
+    },
   });
 }
 
@@ -358,7 +362,10 @@ export function useDeleteComment() {
         throw new Error("delete failed");
       return vars;
     },
-    onSuccess: (_c, vars) =>
-      qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) }),
+    onSuccess: (_c, vars) => {
+      qc.invalidateQueries({ queryKey: qk.comments(vars.nodeId) });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+      qc.invalidateQueries({ queryKey: qk.node(vars.nodeId) });
+    },
   });
 }

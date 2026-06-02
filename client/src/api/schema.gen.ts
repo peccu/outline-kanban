@@ -1133,6 +1133,7 @@ export interface components {
             createdAt: string | null;
             updatedAt: string | null;
             tags?: components["schemas"]["Tag"][];
+            commentCount?: number;
         };
         NodeCreate: {
             parentId?: string | null;

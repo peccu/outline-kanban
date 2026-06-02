@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/client";
-import { nodeTags, nodes, tags } from "../../db/schema";
+import { comments, nodeTags, nodes, tags } from "../../db/schema";
 import {
   getNodeOrThrow,
   nodeSortKeyForInsert,
@@ -24,7 +24,14 @@ export const nodesRouter = new OpenAPIHono();
 
 async function hydrateTags(
   rows: Array<typeof nodes.$inferSelect>,
-): Promise<Array<typeof nodes.$inferSelect & { tags: typeof tags.$inferSelect[] }>> {
+): Promise<
+  Array<
+    typeof nodes.$inferSelect & {
+      tags: (typeof tags.$inferSelect)[];
+      commentCount: number;
+    }
+  >
+> {
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const joined = await db
@@ -41,7 +48,19 @@ async function hydrateTags(
     arr.push(j.tag);
     byNode.set(j.nodeId, arr);
   }
-  return rows.map((r) => ({ ...r, tags: byNode.get(r.id) ?? [] }));
+  // Comment counts so cards can show a 💬 badge without fetching each thread.
+  const counts = await db
+    .select({ nodeId: comments.nodeId, count: sql<number>`count(*)` })
+    .from(comments)
+    .where(inOrNothing(comments.nodeId, ids))
+    .groupBy(comments.nodeId);
+  const countByNode = new Map<string, number>();
+  for (const c of counts) countByNode.set(c.nodeId, Number(c.count));
+  return rows.map((r) => ({
+    ...r,
+    tags: byNode.get(r.id) ?? [],
+    commentCount: countByNode.get(r.id) ?? 0,
+  }));
 }
 
 import { inArray, sql } from "drizzle-orm";
