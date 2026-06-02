@@ -10,25 +10,12 @@ import {
   useAttachTag,
   useComments,
   useDetachTag,
+  useLanes,
+  useMoveNode,
   useNode,
   useTags,
   useUpdateNode,
 } from "@/api/queries";
-import type { NodeStatus } from "@/api/client";
-
-const STATUS_LABEL: Record<NodeStatus, string> = {
-  open: "open",
-  doing: "doing",
-  done: "done",
-  blocked: "blocked",
-};
-const STATUS_COLOR: Record<NodeStatus, string> = {
-  open: "bg-neutral-600",
-  doing: "bg-blue-500",
-  done: "bg-emerald-500",
-  blocked: "bg-rose-500",
-};
-const STATUSES: NodeStatus[] = ["open", "doing", "done", "blocked"];
 
 const props = defineProps<{
   nodeId: string;
@@ -314,9 +301,22 @@ async function postComment() {
   newComment.value = "";
 }
 
-function setStatus(s: NodeStatus) {
-  if (!node.value || node.value.status === s) return;
-  update.mutate({ id: node.value.id, patch: { status: s } });
+// ---- lane (= status) ----
+// In this app a lane *is* the status: moving a root card between lanes is how
+// you change its state. Listing the real lanes here keeps the detail view in
+// sync with whatever lanes the user has defined, and moving reflects straight
+// back onto the board.
+const { data: lanes } = useLanes();
+const move = useMoveNode();
+const isRootNode = computed(() => node.value?.parentId == null);
+
+function moveToLane(laneId: string) {
+  if (!node.value || !isRootNode.value) return;
+  if (node.value.laneId === laneId) return;
+  move.mutate({
+    id: node.value.id,
+    move: { parentId: null, laneId, beforeId: null },
+  });
 }
 
 const modalRoot = ref<HTMLElement | null>(null);
@@ -475,29 +475,33 @@ onBeforeUnmount(() => {
               <h3
                 class="text-xs font-medium uppercase tracking-wide text-neutral-400"
               >
-                status
+                lane
               </h3>
             </div>
-            <div class="flex flex-wrap gap-1.5">
+            <div v-if="isRootNode" class="flex flex-wrap gap-1.5">
               <button
-                v-for="s in STATUSES"
-                :key="s"
+                v-for="l in lanes ?? []"
+                :key="l.id"
                 type="button"
                 class="flex items-center gap-1.5 rounded border px-2 py-1 text-xs transition-colors"
                 :class="
-                  node?.status === s
+                  node?.laneId === l.id
                     ? 'border-neutral-600 bg-neutral-800 text-neutral-100'
                     : 'border-neutral-800 text-neutral-400 hover:border-neutral-700'
                 "
-                @click="setStatus(s)"
+                @click="moveToLane(l.id)"
               >
                 <span
                   class="inline-block size-2 rounded-full"
-                  :class="STATUS_COLOR[s]"
+                  :style="{ background: l.color ?? '#525252' }"
                 />
-                {{ STATUS_LABEL[s] }}
+                {{ l.name }}
               </button>
             </div>
+            <p v-else class="text-xs text-neutral-500">
+              Subtasks inherit their parent's lane (change it via the lane label
+              on the board).
+            </p>
           </section>
 
           <section>

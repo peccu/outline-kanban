@@ -49,7 +49,7 @@ AND/OR は OR（いずれか一致）を既定に。
 **対象**: 新規 `tag-filter.ts`, `App.vue`, `OutlinePanel.vue`, `NodeRow.vue`
 **テスト**: `e2e-tag-filter`
 
-### ⬜ T6. status とレーンの不整合
+### ✅ T6. status とレーンの不整合
 **症状**: レーン追加が detail の status に出ない / detail で status 変えてもカンバンに反映されない。
 **背景(memory)**: 「レーン = status」。status enum はレガシー。
 **方針**: detail の status セクションを **lane セレクタ**に置換（全レーン列挙、選択で
@@ -137,3 +137,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: 追加タスク受領: T12(コメントマーク), T13(タイトルをキーボードで保存blur), T14(タグ付与後タイトルから#tag除去),
   T15(複数カード同時編集), T11(レーン色)。計 15 タスク。
 - 2026-06-02: **T7 完了** — detail に tags セクション追加（付与済みは ✕ で外す、入力で既存候補からの付与＋新規作成）。e2e-detail-tags PASS。
+- 2026-06-02: **T6 完了** — detail の status セクションを実レーン一覧の lane セレクタに置換。ルートノードは選択で当該レーンへ移動しカンバンに即反映。子は親レーン従属の旨を表示。e2e-detail-lane PASS。
+- 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。
