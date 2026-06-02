@@ -239,6 +239,25 @@ export function useUpdateTag() {
   });
 }
 
+export function useDeleteTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const r = await api.DELETE("/api/tags/{id}", {
+        params: { path: { id } },
+      });
+      if (r.response.status !== 204 && r.error) throw new Error("delete failed");
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.tags() });
+      // Deleting a tag detaches it everywhere, so refresh node listings too.
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+      qc.invalidateQueries({ queryKey: ["node"] });
+    },
+  });
+}
+
 export function useAttachTag() {
   const qc = useQueryClient();
   return useMutation({

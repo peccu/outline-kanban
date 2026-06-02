@@ -36,7 +36,7 @@
 **対象**: `NodeDetailModal.vue`（必要なら小コンポーネント `TagEditor.vue`）
 **テスト**: `e2e-detail-tags`
 
-### ⬜ T3. 不要タグの削除
+### ✅ T3. 不要タグの削除
 **方針**: `useDeleteTag` を追加（サーバ DELETE /api/tags/{id} は実装済み）。
 タグ管理 UI（ヘッダーに「tags」ボタン → パネル/モーダルで一覧・削除・色変更）。
 **対象**: `queries.ts`, 新規 `TagManager.vue`, `App.vue`
@@ -140,4 +140,5 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-02: **T6 完了** — detail の status セクションを実レーン一覧の lane セレクタに置換。ルートノードは選択で当該レーンへ移動しカンバンに即反映。子は親レーン従属の旨を表示。e2e-detail-lane PASS。
 - 2026-06-02: **T14 完了** — `serializeToText` で mention をタイトルに書き戻さない。タグは node_tags（ピル）が正で、保存タイトルは #tag を含まない。e2e-tag-strip-title PASS。既存 e2e-tag-remove/e2e-tag-color も PASS で回帰なし。
 - 2026-06-02: **T11 完了** — レーンメニューにプリセット色スウォッチ＋reset を追加。ドット表示に反映、localStorage 不要（DB の lane.color）。e2e-lane-color PASS。
+- 2026-06-02: **T3 完了** — useDeleteTag 追加。ヘッダーに tags ボタン → TagManager.vue（一覧・色変更・削除、confirm 付き）。e2e-tag-delete PASS。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。
