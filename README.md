@@ -49,6 +49,39 @@ The DB file is stored in a named volume (`outline-kanban-data`), mounted at
 `/data/outline-kanban.sqlite` inside the container. Override `DB_PATH` /
 `PORT` via env if you want to move it elsewhere.
 
+### Local preview (`./dev.sh`)
+
+To eyeball local changes against a **throwaway** board — without waiting for the
+GitHub Actions image build and without touching your `docker compose` data —
+use the preview launcher. It runs the dev API + Vite client on dedicated ports
+(`9787` / `9788`) against a separate DB and attachments dir, so it coexists with
+both `bun run dev` (`8787`/`8788`) and `docker compose` (`8787`).
+
+```bash
+./dev.sh start --seed   # start both servers + load sample data
+./dev.sh start          # start without seeding
+./dev.sh seed           # (re)load sample data into a running preview
+./dev.sh stop           # kill whatever is on the preview ports
+./dev.sh reset          # stop + delete the preview DB & attachments
+./dev.sh status         # are the ports up?
+```
+
+Equivalent npm scripts: `bun run preview`, `bun run preview:seed`,
+`bun run preview:stop`. Open <http://localhost:9788> (Swagger UI at
+<http://localhost:9787/docs>). `Ctrl+C` stops both servers.
+
+The sample data ([`scripts/seed-sample.ts`](scripts/seed-sample.ts)) exercises
+the main features — tags, comments, descriptions, subtasks, and a subtask that
+belongs to a different lane — and re-seeding always resets to the same known
+set. Ports / paths are overridable:
+
+```bash
+PREVIEW_API_PORT=9797 PREVIEW_APP_PORT=9798 ./dev.sh start
+```
+
+The preview DB (`outline-kanban-preview.sqlite`) and attachments
+(`attachments/preview`) are gitignored.
+
 ### Logging
 
 The server honors `LOG_LEVEL` (`debug` / `info` / `warn` / `error` / `silent`,
