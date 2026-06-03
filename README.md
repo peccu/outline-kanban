@@ -82,6 +82,28 @@ PREVIEW_API_PORT=9797 PREVIEW_APP_PORT=9798 ./dev.sh start
 The preview DB (`outline-kanban-preview.sqlite`) and attachments
 (`attachments/preview`) are gitignored.
 
+### Capture / Inbox intake (`./capture.sh`)
+
+A low-friction way to throw things onto the board from the terminal — a review
+request, a Slack message, an MR/PR link, a stray TODO — without opening the UI.
+Cards land in the **Inbox** lane by default; since lanes are the status, you
+advance an item by moving it between lanes. Tags are optional (e.g. `review`).
+
+```bash
+./capture.sh add "Look into flaky CI test" --tag chore
+./capture.sh add "Review !128 payment retry" \
+  --url https://gitlab.example.com/acme/api/-/merge_requests/128 --by alice --tag review
+./capture.sh list                 # the Inbox
+./capture.sh list --tag review    # just review requests, grouped by lane
+./capture.sh move "payment retry" Doing
+./capture.sh done "flaky CI test"
+```
+
+Targets `OUTLINE_KANBAN_URL` (default `http://localhost:8787`). Also available
+as `bun run capture …`. For Claude Code users, the bundled
+[`kanban-capture` skill](.claude/skills/kanban-capture/SKILL.md) wraps this: paste
+a review request or an MR link and it files (and enriches) the card for you.
+
 ### Logging
 
 The server honors `LOG_LEVEL` (`debug` / `info` / `warn` / `error` / `silent`,
