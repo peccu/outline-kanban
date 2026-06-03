@@ -150,3 +150,13 @@ ZIP 化: `data.json` + `attachments/<id>`）と `POST /api/restore`（ZIP 受領
 - 2026-06-03: **T15 完了** — multi-select.ts ストア。カードで Space/m 選択トグル（青ハイライト）、選択ありで M-Enter → BulkActionModal（一括タグ付け／一括レーン移動、子は laneId のみ）。ヘッダーに選択数＋edit/clear。e2e-multi-select PASS。
 - 2026-06-02: ユーザ指示「i18n 対応まで UI 文言は英語のみ」。lane 説明文を英語化。memory に記録。
 - 2026-06-03: **全 15 タスク完了**。フル e2e スイート 30/30 PASS。型チェック clean。各タスクごとに実装→e2e→コミット済み。
+
+### ✅ T16. detail の LANE/TAGS 内は左右カーソル移動（roving tabindex）
+**要望**: detail で LANE/TAGS はタブで移動できるが、その中の各要素もタブ移動だと、
+レーンを1つずつ送って TAGS に行きたいときにキータイプが増える。グループ内は矢印で選び Enter/Space で確定したい。
+**方針**: roving-tabindex（グループ全体で Tab 1 回、内部は←→移動、Enter/Space で activate）。
+**対象**: 新規 `roving-tabindex.ts`, `NodeDetailModal.vue`(lane 群・tag 候補群), focus-trap が tabindex=-1 を無視するよう調整。
+**テスト**: `e2e-detail-roving`
+- 2026-06-03: **T16 完了** — roving-tabindex.ts 追加。lane ボタン群と tag 候補群をそれぞれ単一 Tab ストップ化し、
+  ←→ で項目移動・Enter/Space で確定。modal の focus-trap は tabindex=-1 を除外。e2e-detail-roving PASS。
+  detail/modal 関連 9 スイート回帰なし。

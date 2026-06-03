@@ -5,6 +5,7 @@ import TagPill from "./TagPill.vue";
 import CommentItem from "./CommentItem.vue";
 import { renderMarkdown } from "@/lib/markdown";
 import { useAttachmentTextarea } from "@/lib/attachments";
+import { useRovingTabindex } from "./roving-tabindex";
 import {
   useAddComment,
   useAttachTag,
@@ -383,6 +384,14 @@ function chooseLane(laneId: string) {
   }
 }
 
+// Roving-tabindex: each of these clusters is one Tab stop; arrows move within,
+// Enter/Space activates. Saves the user from tabbing past every lane button to
+// reach the next section.
+const laneGroup = ref<HTMLElement | null>(null);
+const laneRoving = useRovingTabindex(laneGroup);
+const tagGroup = ref<HTMLElement | null>(null);
+const tagRoving = useRovingTabindex(tagGroup);
+
 const modalRoot = ref<HTMLElement | null>(null);
 let previousFocus: HTMLElement | null = null;
 
@@ -393,7 +402,12 @@ function focusableInModal(): HTMLElement[] {
   const root = modalRoot.value;
   if (!root) return [];
   return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (el) => !el.hasAttribute("disabled") && el.offsetParent !== null,
+    (el) =>
+      !el.hasAttribute("disabled") &&
+      el.offsetParent !== null &&
+      // Roving-tabindex parks inactive group items at -1; they aren't part of
+      // the Tab order, so don't let them anchor the focus trap.
+      el.tabIndex >= 0,
   );
 }
 
@@ -576,11 +590,21 @@ onBeforeUnmount(() => {
                 lane
               </h3>
             </div>
-            <div class="flex flex-wrap gap-1.5">
+            <div
+              ref="laneGroup"
+              role="radiogroup"
+              aria-label="lane"
+              class="flex flex-wrap gap-1.5"
+              @keydown="laneRoving.onKeydown"
+              @focusin="laneRoving.onFocusin"
+            >
               <button
                 v-for="l in lanes ?? []"
                 :key="l.id"
                 type="button"
+                data-roving-item
+                role="radio"
+                :aria-checked="node?.laneId === l.id"
                 class="flex items-center gap-1.5 rounded border px-2 py-1 text-xs transition-colors"
                 :class="
                   node?.laneId === l.id
@@ -642,11 +666,16 @@ onBeforeUnmount(() => {
               />
               <ul
                 v-if="tagSuggestions.length || canCreateTag"
+                ref="tagGroup"
                 class="mt-1 flex flex-wrap gap-1"
+                aria-label="tag suggestions"
+                @keydown="tagRoving.onKeydown"
+                @focusin="tagRoving.onFocusin"
               >
                 <li v-for="s in tagSuggestions" :key="s.id">
                   <button
                     type="button"
+                    data-roving-item
                     class="rounded border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-300 hover:border-neutral-600 hover:bg-neutral-900"
                     @click="attachExisting(s.id)"
                   >
@@ -656,6 +685,7 @@ onBeforeUnmount(() => {
                 <li v-if="canCreateTag">
                   <button
                     type="button"
+                    data-roving-item
                     class="rounded border border-emerald-700/60 px-1.5 py-0.5 font-mono text-[10px] text-emerald-300 hover:bg-emerald-500/10"
                     @click="attachByName(tagInput)"
                   >
