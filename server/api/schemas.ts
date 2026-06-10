@@ -12,6 +12,7 @@ export const LaneSchema = z
     id: z.string(),
     name: z.string(),
     color: z.string().nullable(),
+    isClosed: z.boolean(),
     sortKey: z.string(),
     createdAt: z.coerce.date(),
   })
@@ -29,6 +30,7 @@ export const LaneUpdate = z
   .object({
     name: z.string().min(1).max(120).optional(),
     color: z.string().max(32).nullable().optional(),
+    isClosed: z.boolean().optional(),
   })
   .openapi("LaneUpdate");
 

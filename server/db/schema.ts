@@ -32,6 +32,7 @@ export const lanes = sqliteTable(
     id: id(),
     name: text("name").notNull(),
     color: text("color"),
+    isClosed: integer("is_closed", { mode: "boolean" }).notNull().default(false),
     sortKey: text("sort_key").notNull(),
     createdAt: createdAt(),
   },
