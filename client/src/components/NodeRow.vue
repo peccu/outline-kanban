@@ -147,6 +147,26 @@ function flushSave() {
   }
 }
 
+// A card whose title is still blank when editing ends (Esc, Enter, or
+// focus moving elsewhere) is discarded instead of being left behind as
+// an empty card. Children / description / comments make it worth keeping
+// even without a title; auto-attached filter tags don't.
+let discarded = false;
+function discardIfBlank(): boolean {
+  if (discarded) return true;
+  if (title.value.trim()) return false;
+  if (children.value.length > 0) return false;
+  if ((props.node.bodyMd ?? "").trim()) return false;
+  if ((props.node.commentCount ?? 0) > 0) return false;
+  if (saveTimer) {
+    window.clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  discarded = true;
+  del.mutate(props.node.id);
+  return true;
+}
+
 function leaveEditMode() {
   // Cancel any in-flight focus-bus retries so they don't pull focus back
   // into the editor after we land on the card.
@@ -160,14 +180,26 @@ function leaveEditMode() {
 }
 
 function onEnter() {
-  flushSave();
   resetCycle(props.node.id);
+  if (discardIfBlank()) {
+    const prev = props.siblings[props.index - 1];
+    if (prev) focusNode(prev.id, "view");
+    return;
+  }
+  flushSave();
   leaveEditMode();
 }
 
 function onEditorEscape() {
-  flushSave();
   resetCycle(props.node.id);
+  // The editor blurs itself before emitting key-escape, so a blank card
+  // has already been discarded by onEditorBlur at this point.
+  if (discardIfBlank()) {
+    const prev = props.siblings[props.index - 1];
+    if (prev) focusNode(prev.id, "view");
+    return;
+  }
+  flushSave();
   leaveEditMode();
 }
 
@@ -398,8 +430,10 @@ function onDragEnd() {
 function onEditorBlur() {
   // Editor lost focus (user clicked outside, tabbed away, etc.) — drop
   // back to view mode so a stray click later doesn't drop a cursor into
-  // the title.
-  if (editing.value) editing.value = false;
+  // the title. A still-blank card is discarded rather than left behind.
+  if (!editing.value) return;
+  editing.value = false;
+  discardIfBlank();
 }
 
 function isEventOnOwnCard(e: Event): boolean {
