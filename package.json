@@ -9,7 +9,7 @@
     "dev:client": "E2E_APP_PORT=9788 E2E_API_TARGET=http://localhost:9787 vite --config client/vite.config.ts",
     "build:client": "vite build --config client/vite.config.ts",
     "preview:client": "vite preview --config client/vite.config.ts",
-    "gen:types": "openapi-typescript http://localhost:8787/api/openapi.json -o client/src/api/schema.gen.ts",
+    "gen:types": "openapi-typescript http://localhost:9787/api/openapi.json -o client/src/api/schema.gen.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run server/db/migrate.ts",
     "test:e2e": "bun run scripts/e2e-run.ts",

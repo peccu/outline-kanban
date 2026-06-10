@@ -47,7 +47,7 @@ Forgetting any of these causes silent data loss or runtime errors:
   - INSERT statement: add the new column name
   - `ins.<table>.run(...)` call: pass `row.newField ?? <default>` (the `?? default` keeps old backups importable)
   - Bump `BACKUP_VERSION` by 1
-- [ ] Any frontend type that references the table (auto-generated via `bun run gen:types` after the server is updated)
+- [ ] Regenerate frontend types: `bun run gen:types` (requires `bun run dev` to be running on :9787)
 
 ## Tech stack
 

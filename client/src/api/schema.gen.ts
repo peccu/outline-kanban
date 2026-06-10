@@ -1094,6 +1094,7 @@ export interface components {
             id: string;
             name: string;
             color: string | null;
+            isClosed: boolean;
             sortKey: string;
             createdAt: string | null;
         };
@@ -1109,6 +1110,7 @@ export interface components {
         LaneUpdate: {
             name?: string;
             color?: string | null;
+            isClosed?: boolean;
         };
         LaneReorder: {
             beforeLaneId: string | null;
