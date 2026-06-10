@@ -234,8 +234,7 @@ const tagSuggestions = computed(() => {
   const q = tagInput.value.trim().replace(/^#/, "").toLowerCase();
   return (allTags.value ?? [])
     .filter((t) => !attachedTagIds.value.has(t.id))
-    .filter((t) => (q ? t.name.toLowerCase().includes(q) : true))
-    .slice(0, 8);
+    .filter((t) => (q ? t.name.toLowerCase().includes(q) : true));
 });
 const canCreateTag = computed(() => {
   const name = tagInput.value.trim().replace(/^#/, "");
@@ -667,7 +666,7 @@ onBeforeUnmount(() => {
               <ul
                 v-if="tagSuggestions.length || canCreateTag"
                 ref="tagGroup"
-                class="mt-1 flex flex-wrap gap-1"
+                class="mt-1 flex max-h-28 flex-wrap gap-1 overflow-y-auto"
                 aria-label="tag suggestions"
                 @keydown="tagRoving.onKeydown"
                 @focusin="tagRoving.onFocusin"
