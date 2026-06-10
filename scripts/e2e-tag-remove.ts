@@ -44,6 +44,10 @@ await page.waitForTimeout(700);
 // accept the "create #urg" suggestion
 await page.keyboard.press("Enter");
 await page.waitForTimeout(600);
+// leave inline edit mode — a click on a card that's still being edited
+// goes to the editor instead of opening the detail modal
+await page.keyboard.press("Enter");
+await page.waitForTimeout(400);
 
 await page.screenshot({ path: "/tmp/tag-remove-01-attached.png", fullPage: true });
 

@@ -87,7 +87,9 @@ const doneId = lanes.find((l) => l.name === "Done")!.id;
 const doneLane = page.locator(`section[data-lane-id="${doneId}"]`).first();
 await doneLane.locator("button[aria-label='lane menu']").click();
 await page.waitForTimeout(300);
-await page.locator("button:has-text('hide')").first().click();
+// Exact-name match: the board header also has a "hide closed" button that
+// a bare has-text('hide') would grab first.
+await doneLane.getByRole("button", { name: "hide", exact: true }).click();
 await page.waitForTimeout(500);
 
 const collapsedWidth = (await doneLane.boundingBox())?.width ?? 999;
