@@ -166,18 +166,43 @@ let lastMentions = new Map<string, MentionEntry>();
   for (const m of initial) lastMentions.set(keyOf(m), m);
 }
 
+function removeMentionNodes() {
+  const positions: { from: number; to: number }[] = [];
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === "mention") {
+      positions.push({ from: pos, to: pos + node.nodeSize });
+    }
+  });
+  if (positions.length === 0) return;
+  const tr = editor.state.tr;
+  for (const { from, to } of positions.reverse()) {
+    tr.delete(from, to);
+  }
+  editor.view.dispatch(tr);
+}
+
 function diffMentions() {
   const current = collectMentions(editor.getJSON());
   const currentMap = new Map<string, MentionEntry>();
   for (const m of current) currentMap.set(keyOf(m), m);
 
+  let hasNew = false;
   for (const [k, m] of currentMap) {
-    if (!lastMentions.has(k)) emit("tag-inserted", m);
+    if (!lastMentions.has(k)) { emit("tag-inserted", m); hasNew = true; }
   }
   for (const [k, m] of lastMentions) {
     if (!currentMap.has(k)) emit("tag-removed", m);
   }
-  lastMentions = currentMap;
+
+  if (hasNew) {
+    // Clear lastMentions *before* dispatching the removal transaction so the
+    // re-triggered onUpdate→diffMentions sees empty vs empty and doesn't emit
+    // spurious tag-removed events. Tags are shown as TagPills, not inline chips.
+    lastMentions = new Map();
+    setTimeout(removeMentionNodes, 0);
+  } else {
+    lastMentions = currentMap;
+  }
 }
 
 watch(
@@ -211,10 +236,9 @@ watch(
 );
 
 function serializeToText(doc: any): string {
-  // Custom serializer: text nodes verbatim. Mentions are *not* written back
-  // into the title — a tag's canonical home is the node_tags table (shown as a
-  // pill), so the persisted title stays clean rather than duplicating "#label"
-  // inline. The mention chip still shows in the editor until the row remounts.
+  // Custom serializer: text nodes verbatim. Mention nodes are stripped —
+  // tags live in node_tags (shown as TagPills) and are removed from the
+  // editor immediately after insertion by removeMentionNodes().
   const paragraph = doc?.content?.[0];
   if (!paragraph?.content) return "";
   return paragraph.content
