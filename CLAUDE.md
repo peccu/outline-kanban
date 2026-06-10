@@ -60,3 +60,19 @@ Forgetting any of these causes silent data loss or runtime errors:
 ```sh
 bun run gen:types    # requires the dev server to be running on :9787
 ```
+
+Always re-run `gen:types` after changing `server/api/schemas.ts`, then commit
+the updated `client/src/api/schema.gen.ts` together with the schema change.
+Forgetting this is the most common cause of CI typecheck failures.
+
+## Pre-push hook (typecheck gate)
+
+`hooks/pre-push` runs `bun run typecheck` automatically before every push.
+Git is configured to use this directory via `git config core.hooksPath hooks`
+(set in the `prepare` npm/bun script, so it activates after `bun install`).
+
+To install manually on a fresh clone:
+
+```sh
+git config core.hooksPath hooks
+```

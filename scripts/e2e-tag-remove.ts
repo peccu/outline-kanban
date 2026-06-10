@@ -1,3 +1,6 @@
+// Tag removal: verify that mention chips are removed immediately after
+// insertion (tag shows as TagPill only), and that the detail view's ✕
+// button properly detaches the tag.
 import { chromium } from "playwright";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:8788";
@@ -14,6 +17,12 @@ async function resetData() {
 await resetData();
 
 const errors: string[] = [];
+const failures: string[] = [];
+function check(label: string, ok: boolean, extra = "") {
+  console.log(`${ok ? "✓" : "✗"} ${label}${extra ? ` — ${extra}` : ""}`);
+  if (!ok) failures.push(label);
+}
+
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
@@ -34,38 +43,48 @@ await page.keyboard.type("#urg");
 await page.waitForTimeout(700);
 // accept the "create #urg" suggestion
 await page.keyboard.press("Enter");
-await page.waitForTimeout(500);
-
-// Verify the tag is attached
-let nodes = (await fetch(`${API_URL}/api/nodes`).then((r) => r.json())) as any[];
-let card = nodes.find((n) => n.title.includes("a card"));
-const attachedTags = card?.tags?.map((t: any) => t.name) ?? [];
-console.log("attached after insert:", attachedTags);
+await page.waitForTimeout(600);
 
 await page.screenshot({ path: "/tmp/tag-remove-01-attached.png", fullPage: true });
 
-// Focus the editor, select all, retype just the plain title to drop the mention.
-const editor = page.locator(".ProseMirror").first();
-await editor.click();
-await page.waitForTimeout(150);
-await page.keyboard.press("Control+A");
-await page.keyboard.press("Meta+A");
-await page.waitForTimeout(100);
-await page.keyboard.type("a card");
-await page.waitForTimeout(800);
+async function card() {
+  const nodes = (await fetch(`${API_URL}/api/nodes`).then((r) => r.json())) as any[];
+  const c = nodes.find((n: any) => n.title.includes("a card"));
+  return { title: c?.title ?? "", tags: (c?.tags ?? []).map((t: any) => t.name) };
+}
 
-await page.screenshot({ path: "/tmp/tag-remove-02-deleted.png", fullPage: true });
+// --- verify chip is gone immediately (no inline mention in editor) ---
+const editorText = await todayLane
+  .locator('.ProseMirror')
+  .first()
+  .innerText()
+  .catch(() => "");
+check("mention chip removed from editor", !editorText.includes("#urg"), JSON.stringify(editorText));
 
-nodes = (await fetch(`${API_URL}/api/nodes`).then((r) => r.json())) as any[];
-card = nodes.find((n) => n.title.includes("a card"));
-const tagsAfter = card?.tags?.map((t: any) => t.name) ?? [];
-console.log("attached after backspace:", tagsAfter);
-console.log("title now:", JSON.stringify(card?.title));
+let c = await card();
+check("tag attached after #mention", c.tags.includes("urg"), JSON.stringify(c.tags));
+check("title saved without #tag text", !c.title.includes("#urg"), JSON.stringify(c.title));
 
-const ok = attachedTags.includes("urg") && tagsAfter.length === 0 && errors.length === 0;
-console.log(`\nresult: ${ok ? "PASS" : "FAIL"}`);
-console.log("page errors:", errors.length);
+// --- remove tag via detail view ✕ button ---
+await todayLane.locator("[data-card-node-id]").first().click();
+await page.waitForTimeout(500);
+check("detail modal opened", await page.locator("text=description (markdown)").isVisible());
+
+await page.locator('button[aria-label="remove tag urg"]').click();
+await page.waitForTimeout(500);
+
+await page.screenshot({ path: "/tmp/tag-remove-02-detached.png", fullPage: true });
+
+// Close modal
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
+
+c = await card();
+check("tag detached via detail view", !c.tags.includes("urg"), JSON.stringify(c.tags));
+
+console.log(`\npage errors: ${errors.length}`);
 for (const e of errors) console.log(e);
-
+const ok = failures.length === 0 && errors.length === 0;
+console.log(ok ? "\nPASS" : `\nFAIL (${failures.length} checks failed)`);
 await browser.close();
 process.exit(ok ? 0 : 1);

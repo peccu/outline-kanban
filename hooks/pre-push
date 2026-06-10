@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs before every git push. Catches type errors before they hit CI.
+echo "[pre-push] running typecheck…"
+bun run typecheck
