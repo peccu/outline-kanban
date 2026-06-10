@@ -19,7 +19,7 @@
     "seed:sample": "bun run scripts/seed-sample.ts",
     "capture": "bun run scripts/capture.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && vue-tsc -p client/tsconfig.json --noEmit",
-    "prepare": "git config core.hooksPath hooks"
+    "prepare": "git config core.hooksPath hooks 2>/dev/null || true"
   },
   "dependencies": {
     "@hono/swagger-ui": "^0.5.0",
