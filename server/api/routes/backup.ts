@@ -25,7 +25,9 @@ const ATTACHMENTS_DIR = resolve(process.env.ATTACHMENTS_DIR ?? "./attachments");
 
 export const backupRouter = new Hono();
 
-const BACKUP_VERSION = 1;
+// Bump when the data.json schema gains new fields so importers can detect
+// older archives and apply defaults for missing fields.
+const BACKUP_VERSION = 2;
 
 backupRouter.get("/backup", async (c) => {
   const [laneRows, nodeRows, tagRows, nodeTagRows, commentRows, attachmentRows] =
@@ -119,7 +121,7 @@ backupRouter.post("/restore", async (c) => {
 
   const ins = {
     lane: sqlite.prepare(
-      "INSERT INTO lanes (id,name,color,sort_key,created_at) VALUES (?,?,?,?,?)",
+      "INSERT INTO lanes (id,name,color,is_closed,sort_key,created_at) VALUES (?,?,?,?,?,?)",
     ),
     tag: sqlite.prepare(
       "INSERT INTO tags (id,name,color,created_at) VALUES (?,?,?,?)",
@@ -144,7 +146,8 @@ backupRouter.post("/restore", async (c) => {
       "DELETE FROM comments; DELETE FROM node_tags; DELETE FROM attachments; DELETE FROM nodes; DELETE FROM tags; DELETE FROM lanes;",
     );
     for (const l of data.lanes ?? [])
-      ins.lane.run(l.id, l.name, l.color ?? null, l.sortKey, toMs(l.createdAt));
+      // isClosed was added in backup v2; default to 0 (false) for older archives.
+      ins.lane.run(l.id, l.name, l.color ?? null, l.isClosed ? 1 : 0, l.sortKey, toMs(l.createdAt));
     for (const t of data.tags ?? [])
       ins.tag.run(t.id, t.name, t.color ?? null, toMs(t.createdAt));
     for (const n of data.nodes ?? [])
