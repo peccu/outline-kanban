@@ -7,7 +7,7 @@ import { focusCard, navigateCard } from "./card-nav";
 import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
 import { clearDropTarget, isDropBefore } from "./drop-state";
 import { isNodeCollapsed, toggleNodeCollapsed } from "./collapsed-nodes";
-import { tagFilterVisibleKey } from "./tag-filter";
+import { selectedTagIds, tagFilterVisibleKey } from "./tag-filter";
 import { closedLaneIdsKey, hideClosedSubtasksKey } from "./closed-subtasks";
 import {
   hasSelection,
@@ -181,6 +181,9 @@ async function onModEnter() {
     beforeId: nextSiblingId.value,
     title: "",
   });
+  for (const tagId of selectedTagIds.value) {
+    attach.mutate({ nodeId: created.id, tag: { tagId } });
+  }
   focusNode(created.id);
 }
 

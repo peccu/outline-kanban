@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import NodeRow from "./NodeRow.vue";
-import { useCreateNode, useNodes } from "@/api/queries";
+import { useAttachTag, useCreateNode, useNodes } from "@/api/queries";
 import { focusNode } from "./focus-bus";
 import { navigateFrom } from "./card-nav";
 import { isDropAtEndOf } from "./drop-state";
-import { tagFilterVisibleKey } from "./tag-filter";
+import { selectedTagIds, tagFilterVisibleKey } from "./tag-filter";
 
 const tagFilterVisible = inject(
   tagFilterVisibleKey,
@@ -32,6 +32,7 @@ const visibleNodes = computed(() => {
 });
 
 const createNode = useCreateNode();
+const attachTag = useAttachTag();
 const addBtn = ref<HTMLButtonElement | null>(null);
 
 async function addNode() {
@@ -40,6 +41,9 @@ async function addNode() {
     parentId: null,
     title: "",
   });
+  for (const tagId of selectedTagIds.value) {
+    attachTag.mutate({ nodeId: created.id, tag: { tagId } });
+  }
   focusNode(created.id);
 }
 
