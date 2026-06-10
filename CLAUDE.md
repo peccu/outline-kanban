@@ -36,6 +36,19 @@ DB_PATH=/path/to/volume/outline-kanban.sqlite bun run db:migrate
 # or: docker exec outline-kanban bun run server/db/migrate.ts
 ```
 
+### Checklist when adding a column to an existing table
+
+Forgetting any of these causes silent data loss or runtime errors:
+
+- [ ] `server/db/schema.ts` — add the column with a default value
+- [ ] `bun run db:generate` — generates the migration SQL
+- [ ] `server/api/schemas.ts` — add the field to the relevant Zod schema(s) (e.g. `LaneSchema`, `LaneUpdate`)
+- [ ] `server/api/routes/backup.ts` — **two places**:
+  - INSERT statement: add the new column name
+  - `ins.<table>.run(...)` call: pass `row.newField ?? <default>` (the `?? default` keeps old backups importable)
+  - Bump `BACKUP_VERSION` by 1
+- [ ] Any frontend type that references the table (auto-generated via `bun run gen:types` after the server is updated)
+
 ## Tech stack
 
 - **Backend**: Bun + Hono + Drizzle ORM + SQLite (WAL mode)
