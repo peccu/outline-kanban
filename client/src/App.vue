@@ -12,6 +12,10 @@ import {
   openBulkPanel,
   selectionCount,
 } from "@/components/multi-select";
+import {
+  isHidingClosedSubtasks,
+  toggleHideClosedSubtasks,
+} from "@/components/closed-subtasks";
 
 const tagManagerOpen = ref(false);
 </script>
@@ -37,6 +41,19 @@ const tagManagerOpen = ref(false);
           @click="tagManagerOpen = true"
         >
           tags<span v-if="isFiltering"> · {{ selectedTagCount }}</span>
+        </button>
+        <button
+          type="button"
+          class="rounded border px-2 py-0.5 transition-colors"
+          :class="
+            isHidingClosedSubtasks
+              ? 'border-amber-600 bg-amber-500/15 text-amber-300'
+              : 'border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-neutral-100'
+          "
+          title="Toggle visibility of subtasks assigned to closed lanes"
+          @click="toggleHideClosedSubtasks"
+        >
+          {{ isHidingClosedSubtasks ? 'show closed' : 'hide closed' }}
         </button>
         <template v-if="hasSelection">
           <button

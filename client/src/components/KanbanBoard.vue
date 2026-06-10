@@ -17,6 +17,11 @@ import {
   showLane,
 } from "./hidden-lanes";
 import {
+  closedLaneIdsKey,
+  hideClosedSubtasks,
+  hideClosedSubtasksKey,
+} from "./closed-subtasks";
+import {
   clearDropTarget,
   clearLaneDropTarget,
   getDropTarget,
@@ -37,6 +42,16 @@ const tagFilterVisible = computed(() =>
   computeVisibleIds(allNodesQuery.data.value ?? []),
 );
 provide(tagFilterVisibleKey, tagFilterVisible);
+
+const closedLaneIds = computed(() => {
+  const s = new Set<string>();
+  for (const l of allLanes.value) {
+    if (l.isClosed) s.add(l.id);
+  }
+  return s;
+});
+provide(closedLaneIdsKey, closedLaneIds);
+provide(hideClosedSubtasksKey, hideClosedSubtasks);
 
 const _cleanup = computed(() => {
   if (data.value) clearHidden(data.value.map((l) => l.id));

@@ -91,6 +91,11 @@ function doHide() {
   hideLane(props.lane.id);
 }
 
+function toggleClosed() {
+  menuOpen.value = false;
+  update.mutate({ id: props.lane.id, patch: { isClosed: !props.lane.isClosed } });
+}
+
 function setColor(color: string | null) {
   if (color === (props.lane.color ?? null)) return;
   update.mutate({ id: props.lane.id, patch: { color } });
@@ -138,8 +143,9 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
     />
     <h2
       v-else
-      class="flex-1 cursor-text truncate text-xs font-semibold uppercase tracking-wide text-neutral-300 hover:text-neutral-100"
-      :title="lane.name"
+      class="flex-1 cursor-text truncate text-xs font-semibold uppercase tracking-wide hover:text-neutral-100"
+      :class="lane.isClosed ? 'text-neutral-500 line-through' : 'text-neutral-300'"
+      :title="lane.isClosed ? `${lane.name} (closed)` : lane.name"
       @dblclick="startRename"
     >
       {{ lane.name }}
@@ -164,6 +170,13 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
           @click="startRename"
         >
           rename
+        </button>
+        <button
+          type="button"
+          class="block w-full px-3 py-1.5 text-left hover:bg-neutral-800"
+          @click="toggleClosed"
+        >
+          {{ lane.isClosed ? 'unmark closed' : 'mark as closed' }}
         </button>
         <button
           type="button"

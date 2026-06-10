@@ -8,6 +8,7 @@ import { clearPendingFocus, focusNode, registerFocusable } from "./focus-bus";
 import { clearDropTarget, isDropBefore } from "./drop-state";
 import { isNodeCollapsed, toggleNodeCollapsed } from "./collapsed-nodes";
 import { tagFilterVisibleKey } from "./tag-filter";
+import { closedLaneIdsKey, hideClosedSubtasksKey } from "./closed-subtasks";
 import {
   hasSelection,
   isNodeSelected,
@@ -93,15 +94,23 @@ const tagFilterVisible = inject(
   tagFilterVisibleKey,
   computed(() => null),
 );
+const closedLaneIds = inject(closedLaneIdsKey, computed(() => new Set<string>()));
+const hideClosedSubtasks = inject(hideClosedSubtasksKey, ref(false));
+
 // Children to actually render: none when collapsed; under a tag filter, only
 // those whose subtree contains a match (the visible-id set already includes
-// ancestors). The full `children` list is still passed as `siblings` so
-// indent / sibling-create keep working off the real ordering.
+// ancestors). When hideClosedSubtasks is on, also hide subtasks whose laneId
+// belongs to a closed lane. The full `children` list is still passed as
+// `siblings` so indent / sibling-create keep working off the real ordering.
 const visibleChildren = computed(() => {
   if (collapsed.value) return [];
+  let list = children.value;
   const v = tagFilterVisible.value;
-  if (!v) return children.value;
-  return children.value.filter((c) => v.has(c.id));
+  if (v) list = list.filter((c) => v.has(c.id));
+  if (hideClosedSubtasks.value && closedLaneIds.value.size > 0) {
+    list = list.filter((c) => !c.laneId || !closedLaneIds.value.has(c.laneId));
+  }
+  return list;
 });
 
 // Org-mode style folding: when collapsed, the subtree is hidden behind a
