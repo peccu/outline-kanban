@@ -1,4 +1,5 @@
-// T5: confirming the title (Enter) moves focus into the description editor.
+// T5: confirming the title (Enter) keeps focus on the title (does not jump
+//     into the description).
 // T8: the comment textarea is comfortably tall.
 import { chromium } from "playwright";
 
@@ -59,13 +60,21 @@ await page.waitForTimeout(200);
 await page.keyboard.press("Enter");
 await page.waitForTimeout(400);
 
-// T5: focus should now be in the description textarea.
-const focusIsDescription = await page.evaluate(() => {
+// T5: focus should stay on the title container, not jump to the description.
+const afterTitleEnter = await page.evaluate(() => {
   const el = document.activeElement as HTMLElement | null;
-  return el?.tagName === "TEXTAREA" &&
-    (el as HTMLTextAreaElement).placeholder === "add details…";
+  return {
+    onContainer: el?.getAttribute("title") === "Enter or double-click to edit",
+    inDescription:
+      el?.tagName === "TEXTAREA" &&
+      (el as HTMLTextAreaElement).placeholder === "add details…",
+  };
 });
-check("focus moved to description after title Enter", focusIsDescription);
+check("focus stays on title after title Enter", afterTitleEnter.onContainer);
+check(
+  "focus did not move to description after title Enter",
+  !afterTitleEnter.inDescription,
+);
 
 // T8: comment textarea is at least 8rem (128px) tall.
 const commentMinH = await page

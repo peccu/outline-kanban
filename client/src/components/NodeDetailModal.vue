@@ -150,29 +150,17 @@ function flushTitleSave() {
   }
 }
 function onTitleEnter() {
+  // Confirm the title and drop back to view mode, keeping focus on the title
+  // rather than jumping into the description (the user stays where they are).
+  // ProseMirror clings to DOM focus across the editable→false transition, so
+  // blur it and retry focusing the title container over a few frames
+  // (same approach as onTitleEscape).
   flushTitleSave();
   titleEditing.value = false;
-  // Mirror org-mode / form flow: confirming the title moves the user straight
-  // into the description so they can keep typing without reaching for the mouse.
-  // ProseMirror clings to DOM focus across the editable→false transition and
-  // can reclaim it after a single focus() call, so blur it and retry focusing
-  // the textarea over a few frames (same approach as focus-bus).
   titleEditorRef.value?.blur();
-  bodyEditing.value = true;
-  focusBodyTextareaSoon();
+  focusTitleContainerSoon();
 }
 
-function focusBodyTextareaSoon(attempt = 0) {
-  const delays = [0, 16, 50, 150];
-  const ta = bodyTextarea.value;
-  if (ta) {
-    ta.focus();
-    ta.selectionStart = ta.selectionEnd = ta.value.length;
-  }
-  if (attempt < delays.length - 1) {
-    window.setTimeout(() => focusBodyTextareaSoon(attempt + 1), delays[attempt + 1]);
-  }
-}
 function onTitleEscape() {
   // Keyboard-only "save & exit edit": persist the title and drop back to view
   // mode, landing focus on the title container so the user never has to reach
