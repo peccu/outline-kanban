@@ -97,14 +97,70 @@ function done() {
   closeBulkPanel();
 }
 
+const modalRoot = ref<HTMLElement | null>(null);
+const tagInputEl = ref<HTMLInputElement | null>(null);
+let previousFocus: HTMLElement | null = null;
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])';
+
+function focusableInModal(): HTMLElement[] {
+  const root = modalRoot.value;
+  if (!root) return [];
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => !el.hasAttribute("disabled") && el.offsetParent !== null && el.tabIndex >= 0,
+  );
+}
+
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") {
     e.stopPropagation();
     closeBulkPanel();
+    return;
+  }
+  if (e.key === "Tab") {
+    // Trap Tab inside the modal so focus can't escape back to the cards
+    // behind it (mirrors NodeDetailModal).
+    const root = modalRoot.value;
+    if (!root) return;
+    const els = focusableInModal();
+    if (els.length === 0) {
+      e.preventDefault();
+      root.focus();
+      return;
+    }
+    const first = els[0]!;
+    const last = els[els.length - 1]!;
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || !root.contains(active)) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    } else if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 }
-onMounted(() => document.addEventListener("keydown", onKeyDown, true));
-onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown, true));
+
+onMounted(() => {
+  previousFocus = document.activeElement as HTMLElement | null;
+  document.addEventListener("keydown", onKeyDown, true);
+  // Land focus on the tag input so the modal is keyboard-ready the moment it
+  // opens (M-Enter from a multi-selection); otherwise focus stays on the card.
+  requestAnimationFrame(() => {
+    const target = tagInputEl.value ?? modalRoot.value;
+    target?.focus();
+  });
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("keydown", onKeyDown, true);
+  // Return focus to whatever opened the modal — typically the card div, so
+  // card-focus shortcuts keep working after the modal closes.
+  previousFocus?.focus?.();
+});
 </script>
 
 <template>
@@ -114,7 +170,11 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown, true));
       @click.self="closeBulkPanel"
     >
       <div
-        class="flex w-full max-w-md flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-950 p-4 shadow-2xl"
+        ref="modalRoot"
+        tabindex="-1"
+        role="dialog"
+        aria-modal="true"
+        class="flex w-full max-w-md flex-col gap-4 rounded-lg border border-neutral-800 bg-neutral-950 p-4 shadow-2xl outline-none"
       >
         <header class="flex items-center justify-between">
           <h2 class="text-sm font-semibold text-neutral-100">
@@ -135,6 +195,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKeyDown, true));
             add tag to all
           </h3>
           <input
+            ref="tagInputEl"
             v-model="tagInput"
             type="text"
             placeholder="tag name… (Enter to apply)"
