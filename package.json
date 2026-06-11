@@ -7,6 +7,7 @@
     "dev": "concurrently -n server,client -c blue,green \"bun run dev:server\" \"bun run dev:client\"",
     "dev:server": "PORT=9787 DB_PATH=outline-kanban-dev.sqlite bun run --watch server/index.ts",
     "dev:client": "E2E_APP_PORT=9788 E2E_API_TARGET=http://localhost:9787 vite --config client/vite.config.ts",
+    "dev:branch": "./scripts/dev-branch.sh",
     "build:client": "vite build --config client/vite.config.ts",
     "preview:client": "vite preview --config client/vite.config.ts",
     "gen:types": "openapi-typescript http://localhost:9787/api/openapi.json -o client/src/api/schema.gen.ts",
