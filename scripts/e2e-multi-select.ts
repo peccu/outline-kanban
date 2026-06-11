@@ -69,6 +69,13 @@ await page.keyboard.press("Alt+Enter");
 await page.waitForTimeout(300);
 check("bulk panel opened", await page.locator("text=/edit 2 selected card/").isVisible());
 
+// Focus should move into the modal (onto the tag input), not stay on the card.
+const focusInModal = await page.evaluate(() => {
+  const a = document.activeElement;
+  return !!a && !!a.closest('[role="dialog"][aria-modal="true"]');
+});
+check("focus moved into bulk modal", focusInModal);
+
 // Bulk add a tag.
 await page.locator('input[placeholder^="tag name"]').fill(TAG);
 await page.keyboard.press("Enter");
