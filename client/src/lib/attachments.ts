@@ -4,6 +4,8 @@
 
 import { onBeforeUnmount, watch, type Ref } from "vue";
 
+import { htmlHasRichContent, htmlToMarkdown } from "./html-to-markdown";
+
 export type UploadedAttachment = {
   id: string;
   filename: string;
@@ -131,18 +133,34 @@ export function useAttachmentTextarea(
   }
 
   function onPaste(e: ClipboardEvent) {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+    const data = e.clipboardData;
+    if (!data) return;
+
+    // Files (e.g. screenshots) take priority — upload + insert a link.
     const files: File[] = [];
-    for (const it of Array.from(items)) {
+    for (const it of Array.from(data.items)) {
       if (it.kind === "file") {
         const f = it.getAsFile();
         if (f) files.push(f);
       }
     }
-    if (files.length === 0) return;
-    e.preventDefault();
-    void processFiles(files);
+    if (files.length > 0) {
+      e.preventDefault();
+      void processFiles(files);
+      return;
+    }
+
+    // Rich HTML (copied from a web page or rendered Markdown) → convert to
+    // Markdown so links, headings, lists and tables survive the paste. Plain
+    // text copies fall through to the browser's default handling.
+    const html = data.getData("text/html");
+    if (html && htmlHasRichContent(html)) {
+      const md = htmlToMarkdown(html);
+      if (md) {
+        e.preventDefault();
+        insertAtCaret(md);
+      }
+    }
   }
 
   function onDrop(e: DragEvent) {

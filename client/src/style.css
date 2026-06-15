@@ -99,6 +99,11 @@ body {
   border-collapse: collapse;
   margin: 0.6em 0;
   font-size: 0.875em;
+  /* Wide tables scroll horizontally instead of overflowing the container.
+     display:block makes the table a content-width scroll box. */
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .md th, .md td {
   border: 1px solid #262626;
