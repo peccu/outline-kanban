@@ -10,6 +10,7 @@ import {
   useAddComment,
   useAttachTag,
   useComments,
+  useCreateNode,
   useDetachTag,
   useLanes,
   useMoveNode,
@@ -82,6 +83,7 @@ watch(currentId, () => {
   bodyEditingPrimed = false;
   titleEditing.value = false;
   newComment.value = "";
+  newSubtask.value = "";
   void rebuildCrumbs();
 });
 
@@ -89,6 +91,7 @@ const update = useUpdateNode();
 const add = useAddComment();
 const attach = useAttachTag();
 const detach = useDetachTag();
+const createNode = useCreateNode();
 
 const body = ref("");
 // Description is "edit-mode" by default when the node has no body yet,
@@ -346,6 +349,25 @@ async function postComment() {
   if (!text) return;
   await add.mutateAsync({ nodeId: currentId.value, bodyMd: text });
   newComment.value = "";
+}
+
+// ---- add subtask ----
+// Create a child under the node currently shown in the modal. Subtasks inherit
+// visibility from their parent, so laneId stays null (same as inline creation
+// in NodeRow). The input is kept focused so several subtasks can be added in a
+// row without reaching for the mouse.
+const newSubtask = ref("");
+const newSubtaskInput = ref<HTMLInputElement | null>(null);
+async function createSubtask() {
+  const title = newSubtask.value.trim();
+  if (!title || createNode.isPending.value) return;
+  await createNode.mutateAsync({
+    parentId: currentId.value,
+    laneId: null,
+    title,
+  });
+  newSubtask.value = "";
+  nextTick(() => newSubtaskInput.value?.focus());
 }
 
 // ---- lane (= status) ----
@@ -762,6 +784,24 @@ onBeforeUnmount(() => {
               </li>
             </ul>
             <p v-else class="text-xs text-neutral-600">no subtasks</p>
+            <div class="mt-2 flex items-center gap-2">
+              <input
+                ref="newSubtaskInput"
+                v-model="newSubtask"
+                type="text"
+                class="min-w-0 flex-1 rounded border border-neutral-800 bg-neutral-900/60 px-2 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
+                placeholder="add a subtask…"
+                @keydown.enter.prevent="createSubtask"
+              />
+              <button
+                type="button"
+                class="shrink-0 rounded border border-neutral-700 px-2.5 py-1 text-xs text-neutral-200 hover:bg-neutral-800 disabled:opacity-50"
+                :disabled="!newSubtask.trim() || createNode.isPending.value"
+                @click="createSubtask"
+              >
+                {{ createNode.isPending.value ? "adding…" : "add" }}
+              </button>
+            </div>
           </section>
 
           <section>
