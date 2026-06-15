@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { attachmentsRouter } from "./routes/attachments";
 import { backupRouter } from "./routes/backup";
+import { captureRouter } from "./routes/capture";
 import { commentsRouter } from "./routes/comments";
 import { lanesRouter } from "./routes/lanes";
 import { nodesRouter } from "./routes/nodes";
@@ -36,6 +37,7 @@ apiRouter.openapi(
     ),
 );
 
+apiRouter.route("/capture", captureRouter);
 apiRouter.route("/lanes", lanesRouter);
 apiRouter.route("/nodes", nodesRouter);
 apiRouter.route("/tags", tagsRouter);
