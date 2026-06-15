@@ -100,9 +100,43 @@ advance an item by moving it between lanes. Tags are optional (e.g. `review`).
 ```
 
 Targets `OUTLINE_KANBAN_URL` (default `http://localhost:8787`). Also available
-as `bun run capture …`. For Claude Code users, the bundled
+as `bun run capture …`. To call it from anywhere, symlink the wrapper onto your
+`PATH` (it `cd`s to the repo itself, so it works from any directory):
+
+```bash
+ln -s "$PWD/capture.sh" ~/bin/kb   # then: kb add "…"  ·  kb list  ·  kb done "…"
+```
+
+For Claude Code users, the bundled
 [`kanban-capture` skill](.claude/skills/kanban-capture/SKILL.md) wraps this: paste
 a review request or an MR link and it files (and enriches) the card for you.
+
+### Capture from the browser & Spotlight (`/api/capture`)
+
+When the idea strikes mid-task, the fastest path is a single URL. The server
+exposes a one-shot intake that resolves the **Inbox** lane for you, so callers
+never deal with lane IDs or CORS preflights:
+
+```
+GET  /api/capture?title=…&url=…&body=…&tag=…   → create a card, return an auto-closing page
+POST /api/capture  {title,url,body,tags,lane}   → create a card, return JSON
+GET  /api/capture                               → the capture hub (form + bookmarklet + snippets)
+```
+
+Open **<http://localhost:8787/api/capture>** for a self-serve hub with:
+
+- a **quick-add form** you can type straight into,
+- a **bookmarklet** to drag to your bookmarks bar — one click files the current
+  page's title, URL and any selected text into the Inbox (a tiny "✓" popup
+  confirms and closes itself),
+- a **macOS Shortcut** recipe: a `Get Contents of URL` action pointed at
+  `…/api/capture?title=[Ask each time]`. Name the shortcut "Inbox" and ⌘Space →
+  type "Inbox" → Enter files from anywhere — that's your Spotlight capture.
+
+`GET`-that-mutates is intentional here: it's what makes capture reachable from
+bookmarklets, Shortcuts and the address bar with zero client code. The
+intake lane is `Inbox` by default; override per-instance with `CAPTURE_LANE`,
+or per-call with `?lane=`.
 
 ### Logging
 
