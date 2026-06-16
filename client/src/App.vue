@@ -74,6 +74,15 @@ const tagManagerOpen = ref(false);
         </template>
         <BackupRestore />
         <a
+          href="/api/capture"
+          target="_blank"
+          rel="noreferrer"
+          title="Quick-add to Inbox (form, bookmarklet, CLI, Shortcut)"
+          class="rounded border border-neutral-800 px-2 py-0.5 text-neutral-300 transition-colors hover:border-neutral-700 hover:text-neutral-100"
+        >
+          + capture
+        </a>
+        <a
           href="/docs"
           target="_blank"
           rel="noreferrer"

@@ -6,12 +6,15 @@
 // The server resolves the Inbox lane by name so callers never deal with lane
 // IDs or CORS preflights.
 //
-//   GET  /api/capture                          → the capture hub (form + bookmarklet)
-//   GET  /api/capture?title=…&url=…&body=…&tag=…  → create a card, return an auto-closing page
-//   POST /api/capture  {title,url,body,tags,lane} → create a card, return JSON
+//   GET  /api/capture                              → the capture hub (form + bookmarklet)
+//   GET  /api/capture?edit=1&title=…&url=…&body=…   → a pre-filled form to review before filing
+//   GET  /api/capture?title=…&url=…&body=…&tag=…    → create a card, return an auto-closing page
+//   POST /api/capture  {title,url,body,tags,lane}   → create a card, return JSON
 //
 // GET-that-mutates is deliberate: it's what makes the endpoint reachable from
-// bookmarklets, Shortcuts and the address bar without any client code.
+// Shortcuts and the address bar without any client code. The bookmarklet uses
+// edit=1 so the page you're on can be tweaked (or its URL removed) before it
+// actually lands — the form there submits a plain create GET.
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
@@ -93,8 +96,8 @@ function hubPage(origin: string): string {
     `javascript:(function(){var t=encodeURIComponent(document.title||''),` +
     `u=encodeURIComponent(location.href),` +
     `s=encodeURIComponent((window.getSelection&&window.getSelection().toString())||'');` +
-    `window.open('${origin}/api/capture?title='+t+'&url='+u+'&body='+s,` +
-    `'kbcapture','width=440,height=260');})();`;
+    `window.open('${origin}/api/capture?edit=1&title='+t+'&url='+u+'&body='+s,` +
+    `'kbcapture','width=480,height=720');})();`;
   return `<!doctype html><meta charset="utf-8"><title>Capture · outline-kanban</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -122,7 +125,7 @@ pre{padding:.7rem .8rem;overflow:auto}.hint{color:#9ca3af;font-size:.85rem}
 </form>
 
 <h2>Bookmarklet</h2>
-<p class="hint">Drag this to your bookmarks bar. Click it on any page to file that page's title, URL and any selected text.</p>
+<p class="hint">Drag this to your bookmarks bar. Click it on any page to grab that page's title, URL and any selected text — then review and tweak (or drop the URL) before filing.</p>
 <p><a class="bm" href="${esc(bookmarklet)}">📥 Capture → ${esc(DEFAULT_LANE)}</a></p>
 
 <h2>CLI</h2>
@@ -135,9 +138,58 @@ pre{padding:.7rem .8rem;overflow:auto}.hint{color:#9ca3af;font-size:.85rem}
 </div>`;
 }
 
+// The bookmarklet's review screen: a compact, pre-filled form so you can edit
+// the title/notes and, crucially, tweak or clear the captured URL before it
+// lands. Submitting it is a plain create GET (no edit flag), which then shows
+// the auto-closing confirmation in the popup.
+function editPage(input: CaptureInput): string {
+  return `<!doctype html><meta charset="utf-8"><title>Capture · review</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{color-scheme:dark}body{font:15px/1.6 system-ui,sans-serif;margin:0;background:#0b0f17;color:#e5e7eb}
+.wrap{max-width:560px;margin:0 auto;padding:1.5rem 1.25rem}
+h1{font-size:1.15rem;margin:0 0 .25rem}.sub{color:#9ca3af;margin:0 0 1.25rem;font-size:.85rem}
+form{display:grid;gap:.6rem}label{font-size:.78rem;color:#9ca3af}
+input,textarea{width:100%;box-sizing:border-box;padding:.6rem .7rem;border:1px solid #374151;border-radius:8px;background:#111827;color:#e5e7eb;font:inherit}
+textarea{min-height:5rem;resize:vertical}
+.row{display:flex;gap:.5rem}.row input{flex:1}
+button{padding:.6rem 1.1rem;border:0;border-radius:8px;background:#3b82f6;color:#fff;font:inherit;cursor:pointer}
+.ghost{background:#1f2937;color:#e5e7eb;border:1px solid #374151}
+.actions{display:flex;gap:.6rem;align-items:center;margin-top:.3rem}
+.hint{color:#9ca3af;font-size:.8rem}
+</style>
+<div class="wrap">
+<h1>Review &amp; capture</h1>
+<p class="sub">Edit anything before it lands in <b>${esc(DEFAULT_LANE)}</b>. Clear the link if you don't want it.</p>
+<form action="/api/capture" method="get">
+  <label>Title</label>
+  <input name="title" value="${esc(input.title ?? "")}" placeholder="What's on your mind?" autofocus required>
+  <label>Link</label>
+  <div class="row">
+    <input id="url" name="url" value="${esc(input.url ?? "")}" placeholder="Link (optional)">
+    <button type="button" class="ghost" onclick="document.getElementById('url').value=''">clear</button>
+  </div>
+  <label>Notes</label>
+  <textarea name="body" placeholder="Notes (optional)">${esc(input.body ?? "")}</textarea>
+  <label>Tag</label>
+  <input name="tag" placeholder="Tag (optional), e.g. review">
+  <div class="actions">
+    <button type="submit">Add to ${esc(DEFAULT_LANE)}</button>
+    <span class="hint">Esc to cancel</span>
+  </div>
+</form>
+</div>
+<script>addEventListener('keydown',function(e){if(e.key==='Escape'){try{window.close()}catch(_){} }});</script>`;
+}
+
 captureRouter.get("/", async (c) => {
   const q = c.req.query();
   const has = (v?: string) => typeof v === "string" && v.trim() !== "";
+  // Bookmarklet → review screen: pre-fill an editable form instead of filing
+  // immediately, so the captured URL/title/notes can be tweaked or dropped.
+  if (has(q.edit)) {
+    return c.html(editPage({ title: q.title, url: q.url, body: q.body }));
+  }
   // No real input → show the hub instead of creating an empty card.
   if (!has(q.title) && !has(q.url) && !has(q.body)) {
     return c.html(hubPage(new URL(c.req.url).origin));
