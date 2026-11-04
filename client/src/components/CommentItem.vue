@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { renderMarkdown } from "@/lib/markdown";
 import { useAttachmentTextarea } from "@/lib/attachments";
+import { clearDraft, loadDraft, saveDraft } from "@/lib/drafts";
 import { useDeleteComment, useUpdateComment } from "@/api/queries";
 import type { Comment } from "@/api/client";
 
@@ -9,6 +10,15 @@ const props = defineProps<{ comment: Comment }>();
 
 const editing = ref(false);
 const draft = ref(props.comment.bodyMd);
+// Unsaved edits survive closing the modal / reloading: they live in
+// localStorage until saved or explicitly discarded.
+const draftKey = computed(() => `comment:edit:${props.comment.id}`);
+watch(draft, (v) => {
+  if (!editing.value) return;
+  if (v === props.comment.bodyMd) clearDraft(draftKey.value);
+  else saveDraft(draftKey.value, v);
+});
+const dirty = computed(() => editing.value && draft.value !== props.comment.bodyMd);
 const rootEl = ref<HTMLLIElement | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
@@ -23,21 +33,27 @@ function fmt(ts: string | Date | null | undefined) {
   return d.toLocaleString();
 }
 
-async function enterEdit() {
-  draft.value = props.comment.bodyMd;
+async function enterEdit(focus = true) {
   editing.value = true;
+  draft.value = loadDraft(draftKey.value) || props.comment.bodyMd;
   await nextTick();
   const ta = textareaRef.value;
-  if (ta) {
+  if (ta && focus) {
     ta.focus();
     ta.selectionStart = ta.selectionEnd = ta.value.length;
   }
 }
 
-function cancelEdit() {
+/** Returns false if the user chose to keep their unsaved edit. */
+function cancelEdit(): boolean {
+  if (dirty.value && !confirm("Discard your unsaved changes to this comment?")) {
+    return false;
+  }
   editing.value = false;
   draft.value = props.comment.bodyMd;
+  clearDraft(draftKey.value);
   requestAnimationFrame(() => rootEl.value?.focus());
+  return true;
 }
 
 async function saveEdit() {
@@ -53,6 +69,7 @@ async function saveEdit() {
     bodyMd: next,
   });
   editing.value = false;
+  clearDraft(draftKey.value);
   requestAnimationFrame(() => rootEl.value?.focus());
 }
 
@@ -78,7 +95,8 @@ function onRootKeydown(e: KeyboardEvent) {
 function onTextareaKeydown(e: KeyboardEvent) {
   if (e.key === "Escape") {
     e.preventDefault();
-    cancelEdit();
+    // Kept the edit → also keep the modal open (it closes on Escape).
+    if (!cancelEdit()) e.stopPropagation();
   } else if (
     e.key === "Enter" &&
     (e.metaKey || e.ctrlKey || e.altKey) &&
@@ -90,6 +108,11 @@ function onTextareaKeydown(e: KeyboardEvent) {
 }
 
 useAttachmentTextarea(textareaRef, draft);
+
+// Re-open the editor if an unsaved edit was left behind last time.
+onMounted(() => {
+  if (loadDraft(draftKey.value)) void enterEdit(false);
+});
 
 onBeforeUnmount(() => {
   // No-op: useAttachmentTextarea wires its own cleanup.
@@ -116,7 +139,7 @@ onBeforeUnmount(() => {
           type="button"
           class="rounded px-1.5 py-0.5 hover:bg-neutral-800 hover:text-neutral-200"
           title="edit (Enter)"
-          @click="enterEdit"
+          @click="enterEdit()"
         >
           ✎ edit
         </button>
@@ -134,14 +157,14 @@ onBeforeUnmount(() => {
     <div
       v-if="!editing"
       class="md mt-0.5 cursor-text"
-      @dblclick="enterEdit"
+      @dblclick="enterEdit()"
       v-html="bodyHtml"
     />
     <template v-else>
       <textarea
         ref="textareaRef"
         v-model="draft"
-        class="mt-1 min-h-[4rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-emerald-500/70 focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
+        class="mt-1 min-h-[14rem] w-full resize-y rounded border border-neutral-800 bg-neutral-900/60 p-2 text-sm text-neutral-100 placeholder:text-neutral-600 focus:border-emerald-500/70 focus:outline-none focus:ring-1 focus:ring-emerald-500/60"
         placeholder="edit comment…"
         @keydown="onTextareaKeydown"
       />
@@ -151,7 +174,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="rounded border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:bg-neutral-800"
-            @click="cancelEdit"
+            @click="cancelEdit()"
           >
             cancel
           </button>

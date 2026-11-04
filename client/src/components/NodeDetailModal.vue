@@ -5,6 +5,7 @@ import TagPill from "./TagPill.vue";
 import CommentItem from "./CommentItem.vue";
 import { renderMarkdown } from "@/lib/markdown";
 import { useAttachmentTextarea } from "@/lib/attachments";
+import { clearDraft, usePersistentDraft } from "@/lib/drafts";
 import { useRovingTabindex } from "./roving-tabindex";
 import {
   useAddComment,
@@ -39,6 +40,8 @@ watch(
 const idRef = currentId;
 const { data: node, isPending: nodeLoading } = useNode(idRef);
 const { data: comments, isPending: commentsLoading } = useComments(idRef);
+// Newest first: the composer sits on top, so the latest comment is right under it.
+const commentsNewestFirst = computed(() => [...(comments.value ?? [])].reverse());
 
 // Direct children for the subtask list.
 const childrenQuery = useNodes(() => ({ parentId: currentId.value }));
@@ -82,8 +85,7 @@ const displayCrumbs = computed<Crumb[]>(() => {
 watch(currentId, () => {
   bodyEditingPrimed = false;
   titleEditing.value = false;
-  newComment.value = "";
-  newSubtask.value = "";
+  // newComment / newSubtask are reloaded from their per-node drafts.
   void rebuildCrumbs();
 });
 
@@ -271,6 +273,7 @@ function onTagInputEnter() {
 }
 
 const newComment = ref("");
+usePersistentDraft(() => `comment:new:${currentId.value}`, newComment);
 const newCommentTextarea = ref<HTMLTextAreaElement | null>(null);
 const dirtyBody = computed(() => (node.value?.bodyMd ?? "") !== body.value);
 
@@ -347,8 +350,11 @@ function scheduleBodyAutosave() {
 async function postComment() {
   const text = newComment.value.trim();
   if (!text) return;
-  await add.mutateAsync({ nodeId: currentId.value, bodyMd: text });
-  newComment.value = "";
+  const nodeId = currentId.value;
+  await add.mutateAsync({ nodeId, bodyMd: text });
+  // If the user drilled elsewhere while sending, don't wipe that node's draft.
+  if (currentId.value === nodeId) newComment.value = "";
+  else clearDraft(`comment:new:${nodeId}`);
 }
 
 // ---- add subtask ----
@@ -357,6 +363,7 @@ async function postComment() {
 // in NodeRow). The input is kept focused so several subtasks can be added in a
 // row without reaching for the mouse.
 const newSubtask = ref("");
+usePersistentDraft(() => `subtask:new:${currentId.value}`, newSubtask);
 const newSubtaskInput = ref<HTMLInputElement | null>(null);
 async function createSubtask() {
   const title = newSubtask.value.trim();
@@ -811,13 +818,7 @@ onBeforeUnmount(() => {
               comments
               <span class="text-neutral-600">({{ comments?.length ?? 0 }})</span>
             </h3>
-            <div v-if="commentsLoading" class="text-xs text-neutral-500">
-              loading…
-            </div>
-            <ul v-else class="flex flex-col gap-2">
-              <CommentItem v-for="c in comments" :key="c.id" :comment="c" />
-            </ul>
-            <div class="mt-3 flex flex-col gap-2">
+            <div class="mb-3 flex flex-col gap-2">
               <textarea
                 ref="newCommentTextarea"
                 v-model="newComment"
@@ -840,6 +841,16 @@ onBeforeUnmount(() => {
                 </button>
               </div>
             </div>
+            <div v-if="commentsLoading" class="text-xs text-neutral-500">
+              loading…
+            </div>
+            <ul v-else class="flex flex-col gap-2">
+              <CommentItem
+                v-for="c in commentsNewestFirst"
+                :key="c.id"
+                :comment="c"
+              />
+            </ul>
           </section>
         </div>
       </div>
