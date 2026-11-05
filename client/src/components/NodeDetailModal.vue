@@ -5,7 +5,7 @@ import TagPill from "./TagPill.vue";
 import CommentItem from "./CommentItem.vue";
 import { renderMarkdown } from "@/lib/markdown";
 import { useAttachmentTextarea } from "@/lib/attachments";
-import { clearDraft, usePersistentDraft } from "@/lib/drafts";
+import { clearDraft, loadDraft, saveDraft, usePersistentDraft } from "@/lib/drafts";
 import { useRovingTabindex } from "./roving-tabindex";
 import {
   useAddComment,
@@ -100,17 +100,48 @@ const body = ref("");
 // so the user lands on a textarea instead of a blank rendered view.
 const bodyEditing = ref(false);
 let bodyEditingPrimed = false;
+// Last server value adopted into `body`. Used to tell whether `body` holds
+// unsaved local edits (body !== lastServerBody) so a background refetch (e.g.
+// on window focus) never clobbers what the user is typing.
+let lastServerBody = "";
+const bodyDraftKey = (id: string) => `body:${id}`;
 watch(
-  () => node.value?.bodyMd,
-  (v) => {
-    if (v === undefined) return;
-    if (body.value !== v) body.value = v ?? "";
+  () => [node.value?.id, node.value?.bodyMd] as const,
+  ([id, v]) => {
+    if (id === undefined || v === undefined) return;
+    // While a drill-down is loading, `node` may still be the previous node.
+    if (id !== currentId.value) return;
+    const saved = v ?? "";
     if (!bodyEditingPrimed) {
-      bodyEditing.value = !(v ?? "").trim();
+      // First load of this node: restore an unsaved draft if there is one.
+      const draft = loadDraft(bodyDraftKey(id));
+      if (draft && draft !== saved) {
+        body.value = draft;
+        bodyEditing.value = true;
+      } else {
+        body.value = saved;
+        bodyEditing.value = !saved.trim();
+      }
+      lastServerBody = saved;
       bodyEditingPrimed = true;
+      return;
     }
+    const hadLocalEdits = body.value !== lastServerBody;
+    lastServerBody = saved;
+    if (!hadLocalEdits && body.value !== saved) body.value = saved;
   },
   { immediate: true },
+);
+// Mirror unsaved description edits into localStorage (same mechanism as
+// comment / subtask drafts) so blurring, closing the modal, switching cards or
+// reloading never loses them. Saving makes body === server, which clears it.
+watch(
+  () => [body.value, node.value?.bodyMd, node.value?.id] as const,
+  ([b, saved, id]) => {
+    if (!bodyEditingPrimed || !id || id !== currentId.value) return;
+    if (b !== (saved ?? "")) saveDraft(bodyDraftKey(id), b);
+    else clearDraft(bodyDraftKey(id));
+  },
 );
 
 const title = ref("");
@@ -290,10 +321,13 @@ const bodyHtml = computed(() => renderMarkdown(body.value));
 
 async function saveBody() {
   if (!node.value) return;
-  await update.mutateAsync({
-    id: node.value.id,
-    patch: { bodyMd: body.value },
-  });
+  const id = node.value.id;
+  const sent = body.value;
+  await update.mutateAsync({ id, patch: { bodyMd: sent } });
+  // Esc saves *and* closes the modal, so we may be unmounted before the
+  // refetched node reaches the draft watcher — clear the draft here. Keep it if
+  // the user kept typing (or drilled elsewhere) while the save was in flight.
+  if (currentId.value !== id || body.value === sent) clearDraft(bodyDraftKey(id));
 }
 
 async function enterBodyEdit() {
